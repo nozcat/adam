@@ -1,0 +1,17 @@
+{
+  "name": "adam",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "lint": "npx standard --fix",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@linear/sdk": "^46.0.0",
+    "dotenv": "^17.0.1"
+  },
+  "devDependencies": {
+    "standard": "^17.1.2"
+  }
+}
