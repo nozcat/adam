@@ -1,15 +1,9 @@
-const linearSdk = require('@linear/sdk')
-const dotenv = require('dotenv')
-const { LinearClient } = linearSdk
+require('dotenv').config()
 
-dotenv.config()
-
-const LINEAR_API_KEY = process.env.LINEAR_API_KEY
+const { LinearClient } = require('@linear/sdk')
 
 async function main () {
-  const linearClient = new LinearClient({
-    apiKey: LINEAR_API_KEY
-  })
+  const linearClient = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
 
   const user = await linearClient.viewer
 
@@ -20,4 +14,4 @@ async function main () {
   }
 }
 
-main()
+main().catch(console.error)
