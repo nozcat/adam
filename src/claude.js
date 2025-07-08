@@ -7,6 +7,55 @@ const { log } = require('./util')
 // Configure marked to use terminal renderer
 marked.use(markedTerminal())
 
+function cleanToolResult(content) {
+  if (typeof content !== 'string') {
+    return content
+  }
+  
+  // Remove system-reminder tags and their content
+  const cleanedContent = content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+  
+  // Trim empty lines at the top and bottom
+  const lines = cleanedContent.split('\n')
+  let start = 0
+  let end = lines.length - 1
+  
+  // Find first non-empty line
+  while (start < lines.length && lines[start].trim() === '') {
+    start++
+  }
+  
+  // Find last non-empty line
+  while (end >= 0 && lines[end].trim() === '') {
+    end--
+  }
+  
+  if (start > end) {
+    return ''
+  }
+  
+  return lines.slice(start, end + 1).join('\n')
+}
+
+function limitLinesWithMore(content, maxLines = 10) {
+  if (typeof content !== 'string') {
+    return content
+  }
+  
+  const lines = content.split('\n')
+  if (lines.length <= maxLines) {
+    return content
+  }
+  
+  const halfLines = Math.floor(maxLines / 2)
+  const topLines = lines.slice(0, halfLines)
+  const bottomLines = lines.slice(-halfLines)
+  const omittedCount = lines.length - (halfLines * 2)
+  const moreIndicator = `... (${omittedCount} more lines)`
+  
+  return topLines.join('\n') + '\n' + chalk.dim(moreIndicator) + '\n' + bottomLines.join('\n')
+}
+
 function logTodoWrite(input) {
   if (!input.todos || !Array.isArray(input.todos)) {
     log('📝', 'Todo list updated', 'yellow')
@@ -84,7 +133,8 @@ function displayLine (line, debug) {
     if (json.type === 'user') {
       for (const content of json.message.content) {
         if (content.type === 'tool_result') {
-          log('👤', content.content)
+          const cleanedContent = cleanToolResult(content.content)
+          log('👤', debug ? cleanedContent : limitLinesWithMore(cleanedContent))
         } else {
           if (debug) {
             log('🔧', JSON.stringify(content), 'cyan')
