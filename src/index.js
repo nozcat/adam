@@ -1,123 +1,50 @@
 require('dotenv').config()
 
-const { LinearClient } = require('@linear/sdk')
-const { Octokit } = require('@octokit/rest')
-const simpleGit = require('simple-git')
 const { callClaude } = require('./claude')
 const { log } = require('./util')
+const {
+  extractRepositoryFromDescription,
+  ensureRepositoryExists,
+  createBranch,
+  createPR,
+  findExistingBranchAndPR,
+  handlePRFeedback,
+  getActivePRs,
+  checkPRApproval
+} = require('./github')
+const {
+  pollLinear,
+  isIssueComplete
+} = require('./linear')
 
 const TARGET_REPO = process.env.TARGET_REPO || process.cwd()
 const DEBUG = process.env.DEBUG === 'true'
-const git = simpleGit(TARGET_REPO)
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
-
-async function findExistingBranchAndPR (issue) {
-  try {
-    const branchName = issue.branchName || `feature/${issue.identifier.toLowerCase()}`
-
-    const branchExists = await checkBranchExists(branchName)
-
-    const { data: pulls } = await octokit.rest.pulls.list({
-      owner: process.env.GITHUB_OWNER,
-      repo: process.env.GITHUB_REPO,
-      head: `${process.env.GITHUB_OWNER}:${branchName}`,
-      state: 'all'
-    })
-
-    const existingPR = pulls.length > 0 ? pulls[0] : null
-
-    return {
-      branchName,
-      branchExists,
-      existingPR
-    }
-  } catch (error) {
-    log('⚠️', `Failed to check existing branch/PR: ${error.message}`, 'yellow')
-    return {
-      branchName: issue.branchName || `feature/${issue.identifier.toLowerCase()}`,
-      branchExists: false,
-      existingPR: null
-    }
-  }
-}
-
-async function checkBranchExists (branchName) {
-  try {
-    const branches = await git.branch(['--all'])
-    return branches.all.some(branch =>
-      branch.includes(branchName) || branch.includes(`origin/${branchName}`)
-    )
-  } catch (error) {
-    log('⚠️', `Failed to check branch existence: ${error.message}`, 'yellow')
-    return false
-  }
-}
-
-async function createBranch (branchName) {
-  try {
-    const exists = await checkBranchExists(branchName)
-    if (exists) {
-      log('🌿', `Branch ${branchName} already exists, checking out...`, 'yellow')
-      await git.checkout(branchName)
-      return true
-    }
-
-    await git.checkout(process.env.BASE_BRANCH || 'main')
-    await git.pull()
-    await git.checkoutLocalBranch(branchName)
-    log('🌿', `Created and switched to branch: ${branchName}`, 'green')
-    return true
-  } catch (error) {
-    log('❌', `Failed to create branch: ${error.message}`, 'red')
-    return false
-  }
-}
-
-async function createPR (issue, branchName) {
-  try {
-    const { data: pr } = await octokit.rest.pulls.create({
-      owner: process.env.GITHUB_OWNER,
-      repo: process.env.GITHUB_REPO,
-      title: `${issue.identifier}: ${issue.title}`,
-      head: branchName,
-      base: process.env.BASE_BRANCH || 'main',
-      body: `Fixes Linear issue: ${issue.identifier}\n\n${issue.description}\n\n🤖 Generated with Claude Code`
-    })
-
-    log('📝', `Created PR: ${pr.html_url}`, 'green')
-    return pr
-  } catch (error) {
-    log('❌', `Failed to create PR: ${error.message}`, 'red')
-    return null
-  }
-}
-
-async function isIssueComplete (issue) {
-  try {
-    const { existingPR } = await findExistingBranchAndPR(issue)
-
-    if (existingPR && existingPR.state === 'closed' && existingPR.merged) {
-      return true
-    }
-
-    return false
-  } catch (error) {
-    log('⚠️', `Failed to check if issue is complete: ${error.message}`, 'yellow')
-    return false
-  }
-}
 
 async function processIssue (issue) {
   const issueId = issue.identifier
 
-  const isComplete = await isIssueComplete(issue)
+  const project = await issue.project()
+  const repoInfo = extractRepositoryFromDescription(project?.description)
+
+  if (!repoInfo) {
+    log('⚠️', `No repository info found in project description for issue: ${issueId}`, 'yellow')
+    return
+  }
+
+  const repoExists = await ensureRepositoryExists(repoInfo)
+  if (!repoExists) {
+    log('❌', `Failed to ensure repository exists for issue: ${issueId}`, 'red')
+    return
+  }
+
+  const isComplete = await isIssueComplete(issue, repoInfo, findExistingBranchAndPR)
   if (isComplete) {
     return
   }
 
   log('🔄', `Processing issue: ${issueId} - ${issue.title}`, 'blue')
 
-  const { branchName, existingPR } = await findExistingBranchAndPR(issue)
+  const { branchName, existingPR } = await findExistingBranchAndPR(issue, repoInfo)
 
   if (existingPR && existingPR.state === 'open') {
     log('📋', `PR already exists for ${issueId}: ${existingPR.html_url}`, 'yellow')
@@ -130,145 +57,60 @@ async function processIssue (issue) {
   }
 
   const prompt = `Please implement the following issue:\n\nTitle: ${issue.title}\n\nDescription:\n${issue.description}\n\nPlease implement this feature completely and commit your changes when done.`
-  const claudeSuccess = await callClaude(prompt, TARGET_REPO, DEBUG)
+  const claudeSuccess = await callClaude(prompt, `./${repoInfo.name}`, DEBUG)
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issueId}`, 'red')
     return
   }
 
-  const pr = await createPR(issue, branchName)
+  const pr = await createPR(issue, branchName, repoInfo)
   if (pr) {
     log('🎉', `Successfully completed issue: ${issueId}`, 'green')
   }
 }
 
-async function handlePRFeedback (prNumber, branchName) {
+async function monitorPRs (repoInfo) {
   try {
-    const { data: reviews } = await octokit.rest.pulls.listReviews({
-      owner: process.env.GITHUB_OWNER,
-      repo: process.env.GITHUB_REPO,
-      pull_number: prNumber
-    })
-
-    const requestedChanges = reviews.filter(review => review.state === 'CHANGES_REQUESTED')
-
-    if (requestedChanges.length > 0) {
-      log('🔄', `PR #${prNumber} has requested changes, addressing feedback...`, 'yellow')
-
-      await git.checkout(branchName)
-
-      const feedbackSummary = requestedChanges.map(review =>
-        `${review.user.login}: ${review.body}`
-      ).join('\n\n')
-
-      const feedbackPrompt = `Please address the following PR feedback:\n\n${feedbackSummary}`
-      const claudeSuccess = await callClaude(feedbackPrompt, TARGET_REPO, DEBUG)
-
-      if (claudeSuccess) {
-        log('✅', `Successfully addressed feedback for PR #${prNumber}`, 'green')
-        return true
-      } else {
-        log('❌', `Failed to address feedback for PR #${prNumber}`, 'red')
-        return false
-      }
-    }
-
-    return true
-  } catch (error) {
-    log('❌', `Error handling PR feedback: ${error.message}`, 'red')
-    return false
-  }
-}
-
-async function checkPRApproval (prNumber) {
-  try {
-    const { data: pr } = await octokit.rest.pulls.get({
-      owner: process.env.GITHUB_OWNER,
-      repo: process.env.GITHUB_REPO,
-      pull_number: prNumber
-    })
-
-    if (pr.mergeable_state === 'ready' && pr.state === 'open') {
-      const { data: reviews } = await octokit.rest.pulls.listReviews({
-        owner: process.env.GITHUB_OWNER,
-        repo: process.env.GITHUB_REPO,
-        pull_number: prNumber
-      })
-
-      const approvals = reviews.filter(review => review.state === 'APPROVED')
-      const requestedChanges = reviews.filter(review => review.state === 'CHANGES_REQUESTED')
-
-      if (approvals.length > 0 && requestedChanges.length === 0) {
-        log('🎯', `PR #${prNumber} is approved, merging...`, 'green')
-
-        await octokit.rest.pulls.merge({
-          owner: process.env.GITHUB_OWNER,
-          repo: process.env.GITHUB_REPO,
-          pull_number: prNumber,
-          merge_method: 'squash'
-        })
-
-        log('🎉', `Successfully merged PR #${prNumber}`, 'green')
-        return true
-      }
-    }
-
-    return false
-  } catch (error) {
-    log('❌', `Error checking PR approval: ${error.message}`, 'red')
-    return false
-  }
-}
-
-async function getActivePRs () {
-  try {
-    const { data: pulls } = await octokit.rest.pulls.list({
-      owner: process.env.GITHUB_OWNER,
-      repo: process.env.GITHUB_REPO,
-      state: 'open'
-    })
-
-    return pulls.filter(pr => pr.body && pr.body.includes('Generated with Claude Code'))
-  } catch (error) {
-    log('❌', `Error getting active PRs: ${error.message}`, 'red')
-    return []
-  }
-}
-
-async function monitorPRs () {
-  try {
-    const activePRs = await getActivePRs()
+    const activePRs = await getActivePRs(repoInfo)
 
     for (const pr of activePRs) {
-      await handlePRFeedback(pr.number, pr.head.ref)
-      await checkPRApproval(pr.number)
+      const feedback = await handlePRFeedback(pr.number, pr.head.ref, repoInfo)
+
+      if (feedback.hasFeedback) {
+        const feedbackPrompt = `Please address the following PR feedback:\n\n${feedback.feedbackSummary}`
+        const claudeSuccess = await callClaude(feedbackPrompt, repoInfo ? `./${repoInfo.name}` : TARGET_REPO, DEBUG)
+
+        if (claudeSuccess) {
+          log('✅', `Successfully addressed feedback for PR #${pr.number}`, 'green')
+        } else {
+          log('❌', `Failed to address feedback for PR #${pr.number}`, 'red')
+        }
+      }
+
+      await checkPRApproval(pr.number, repoInfo)
     }
   } catch (error) {
     log('❌', `Error monitoring PRs: ${error.message}`, 'red')
   }
 }
 
-async function pollLinear () {
-  log('🔄', 'Polling Linear...', 'blue')
+async function runPolling () {
+  const issuesWithProjects = await pollLinear()
+  const processedRepos = new Set()
 
-  try {
-    const linearClient = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
-    const user = await linearClient.viewer
+  for (const { issue, project, projectName, projectDescription } of issuesWithProjects) {
+    const repoInfo = extractRepositoryFromDescription(projectDescription)
+    const repoDisplay = repoInfo ? `${repoInfo.owner}/${repoInfo.name}` : 'No Repository'
 
-    const issues = await linearClient.issues({
-      filter: {
-        assignee: { id: { eq: user.id } },
-        state: { name: { nin: ['Done', 'Canceled'] } }
-      }
-    })
+    log('📋', `Issue ${issue.identifier}: ${issue.title} (Project: ${projectName} - Repository: ${repoDisplay})`, 'cyan')
 
-    log('👀', `Found ${issues.nodes.length} assigned issues`, 'blue')
+    await processIssue(issue)
 
-    for (const issue of issues.nodes) {
-      await processIssue(issue)
+    // Monitor PRs for each unique repository
+    if (repoInfo && !processedRepos.has(`${repoInfo.owner}/${repoInfo.name}`)) {
+      processedRepos.add(`${repoInfo.owner}/${repoInfo.name}`)
+      await monitorPRs(repoInfo)
     }
-  } catch (error) {
-    log('❌', `Error polling Linear: ${error.message}`, 'red')
   }
 }
 
@@ -280,25 +122,27 @@ async function main () {
   const prompt = 'Please implement the decode add instruction'
   const result = await callClaude(prompt, TARGET_REPO, DEBUG)
   // const { marked } = require('marked')
-  // console.log('Claude result:', marked.parse(result).trim())
 
-  /* Original main function - temporarily disabled
-  const interval = parseInt(process.env.POLLING_INTERVAL_MS) || 30000
-  log('⏰', 'blue', `Checking for things to do every ${interval / 1000} seconds`)
+  // Main polling loop
+  setInterval(async () => {
+    await runPolling()
+    // Note: monitorPRs now needs repoInfo, so we'll call it per repository
+  }, 30000)
 
-  while (true) {
-    const startTime = Date.now()
-
-    await pollLinear()
-    await monitorPRs()
-
-    const elapsed = Date.now() - startTime
-    const remaining = interval - elapsed
-    if (remaining > 0) {
-      await new Promise(resolve => setTimeout(resolve, remaining))
-    }
-  }
-  */
+  // Run once immediately
+  await runPolling()
 }
 
-main().catch(console.error)
+if (require.main === module) {
+  main().catch(error => {
+    log('❌', `Application error: ${error.message}`, 'red')
+    process.exit(1)
+  })
+}
+
+module.exports = {
+  processIssue,
+  monitorPRs,
+  runPolling,
+  main
+}
