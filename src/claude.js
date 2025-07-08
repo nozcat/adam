@@ -7,6 +7,48 @@ const { log } = require('./util')
 // Configure marked to use terminal renderer
 marked.use(markedTerminal())
 
+function logTodoWrite(input) {
+  if (!input.todos || !Array.isArray(input.todos)) {
+    log('📝', 'Todo list updated', 'yellow')
+    return
+  }
+
+  const todos = input.todos
+  const statusCounts = todos.reduce((acc, todo) => {
+    acc[todo.status] = (acc[todo.status] || 0) + 1
+    return acc
+  }, {})
+
+  const statusEmojis = {
+    pending: '☐',
+    in_progress: '🔄',
+    completed: '✅'
+  }
+
+  const priorityColors = {
+    high: 'yellow',
+    medium: 'white',
+    low: 'gray'
+  }
+
+  // Show summary
+  const summary = Object.entries(statusCounts)
+    .map(([status, count]) => `${statusEmojis[status]} ${count} ${status}`)
+    .join(' | ')
+  
+  log('📝', `Todo list updated: ${summary}`, 'blue')
+
+  // Show individual todos
+  todos.forEach(todo => {
+    const statusEmoji = statusEmojis[todo.status] || '❓'
+    const priorityColor = priorityColors[todo.priority] || 'white'
+    const content = chalk[priorityColor](todo.content)
+    console.log('   ', `${statusEmoji} ${content}`)
+  })
+
+  console.log()
+}
+
 function displayLine (line, debug) {
   if (line.trim() === '') return
 
@@ -25,7 +67,11 @@ function displayLine (line, debug) {
         if (content.type === 'text') {
           log('🤖', marked.parse(content.text).trim())
         } else if (content.type === 'tool_use') {
-          log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
+          if (content.name === 'TodoWrite') {
+            logTodoWrite(content.input)
+          } else {
+            log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
+          }
         } else {
           if (debug) {
             log('🔧', JSON.stringify(content), 'cyan')
