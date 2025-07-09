@@ -226,39 +226,37 @@ ${issue.description}`
   }
 }
 
-/*
-async function findExistingBranchAndPR (issue, repoInfo) {
+/**
+ * Finds an existing pull request for the given issue's branch
+ * @param {Object} issue - The issue object containing branch information
+ * @param {string} issue.branchName - The name of the branch to search for
+ * @param {Object} repoInfo - Repository information
+ * @param {string} repoInfo.owner - The repository owner
+ * @param {string} repoInfo.name - The repository name
+ * @returns {Promise<Object|null>} The existing PR object if found, null otherwise
+ */
+async function findExistingPR (issue, repoInfo) {
   try {
-    const branchName = issue.branchName || `feature/${issue.identifier.toLowerCase()}`
-
-    const branchExists = await checkBranchExists(branchName)
-
     const owner = repoInfo?.owner || process.env.GITHUB_OWNER
     const repo = repoInfo?.name || process.env.GITHUB_REPO
 
     const { data: pulls } = await octokit.rest.pulls.list({
       owner,
       repo,
-      head: `${owner}:${branchName}`,
+      head: `${owner}:${issue.branchName}`,
       state: 'all'
     })
 
     const existingPR = pulls.length > 0 ? pulls[0] : null
 
-    return {
-      branchName,
-      branchExists,
-      existingPR
-    }
+    return existingPR
   } catch (error) {
     log('⚠️', `Failed to check existing branch/PR: ${error.message}`, 'yellow')
-    return {
-      branchName: issue.branchName || `feature/${issue.identifier.toLowerCase()}`,
-      branchExists: false,
-      existingPR: null
-    }
+    return null
   }
 }
+
+/*
 
 async function handlePRFeedback (prNumber, branchName, repoInfo) {
   try {
@@ -366,13 +364,6 @@ async function checkPRApproval (prNumber, repoInfo) {
 module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
-  createPR
-  /*
-  checkBranchExists,
-  createBranch,
-  findExistingBranchAndPR,
-  handlePRFeedback,
-  getActivePRs,
-  checkPRApproval
-  */
+  createPR,
+  findExistingPR
 }

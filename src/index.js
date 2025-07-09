@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 const DEBUG = process.env.DEBUG === 'true'
@@ -197,6 +197,13 @@ async function processIssue (issue) {
   const checkedOutBranch = await checkoutBranch(issue.branchName, issue.repository.name)
   if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
+    return
+  }
+
+  // Check if the PR already exists.
+  const existingPR = await findExistingPR(issue, issue.repository)
+  if (existingPR) {
+    log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
     return
   }
 
