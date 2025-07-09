@@ -8,70 +8,6 @@ const { pollLinear, getIssueShortName } = require('./linear')
 const DEBUG = process.env.DEBUG === 'true'
 
 /*
-async function isIssueComplete (issue, repoInfo, findExistingBranchAndPR) {
-  try {
-    const { existingPR } = await findExistingBranchAndPR(issue, repoInfo)
-
-    if (existingPR && existingPR.state === 'closed' && existingPR.merged) {
-      return true
-    }
-
-    return false
-  } catch (error) {
-    log('⚠️', `Failed to check if issue is complete: ${error.message}`, 'yellow')
-    return false
-  }
-}
-
-async function processIssue (issue) {
-  const issueId = issue.identifier
-
-  const project = await issue.project()
-  const repoInfo = extractRepositoryFromDescription(project?.description)
-
-  if (!repoInfo) {
-    log('⚠️', `No repository info found in project description for issue: ${issueId}`, 'yellow')
-    return
-  }
-
-  const repoExists = await ensureRepositoryExists(repoInfo)
-  if (!repoExists) {
-    log('❌', `Failed to ensure repository exists for issue: ${issueId}`, 'red')
-    return
-  }
-
-  const isComplete = await isIssueComplete(issue, repoInfo, findExistingBranchAndPR)
-  if (isComplete) {
-    return
-  }
-
-  log('🔄', `Processing issue: ${issueId} - ${issue.title}`, 'blue')
-
-  const { branchName, existingPR } = await findExistingBranchAndPR(issue, repoInfo)
-
-  if (existingPR && existingPR.state === 'open') {
-    log('📋', `PR already exists for ${issueId}: ${existingPR.html_url}`, 'yellow')
-    return
-  }
-
-  const branchCreated = await createBranch(branchName)
-  if (!branchCreated) {
-    return
-  }
-
-  const prompt = `Please implement the following issue:\n\nTitle: ${issue.title}\n\nDescription:\n${issue.description}\n\nPlease implement this feature completely and commit your changes when done.`
-  const claudeSuccess = await callClaude(prompt, `./${repoInfo.name}`, DEBUG)
-  if (!claudeSuccess) {
-    log('❌', `Claude Code failed for issue: ${issueId}`, 'red')
-    return
-  }
-
-  const pr = await createPR(issue, branchName, repoInfo)
-  if (pr) {
-    log('🎉', `Successfully completed issue: ${issueId}`, 'green')
-  }
-}
-
 async function monitorPRs (repoInfo) {
   try {
     const activePRs = await getActivePRs(repoInfo)
@@ -96,27 +32,7 @@ async function monitorPRs (repoInfo) {
     log('❌', `Error monitoring PRs: ${error.message}`, 'red')
   }
 }
-
-async function runPolling () {
-  const issuesWithProjects = await pollLinear()
-  const processedRepos = new Set()
-
-  for (const { issue, project, projectName, projectDescription } of issuesWithProjects) {
-    const repoInfo = extractRepositoryFromDescription(projectDescription)
-    const repoDisplay = repoInfo ? `${repoInfo.owner}/${repoInfo.name}` : 'No Repository'
-
-    log('📋', `Issue ${issue.identifier}: ${issue.title} (Project: ${projectName} - Repository: ${repoDisplay})`, 'cyan')
-
-    await processIssue(issue)
-
-    // Monitor PRs for each unique repository
-    if (repoInfo && !processedRepos.has(`${repoInfo.owner}/${repoInfo.name}`)) {
-      processedRepos.add(`${repoInfo.owner}/${repoInfo.name}`)
-      await monitorPRs(repoInfo)
-    }
-  }
-}
-    */
+*/
 
 /**
  * Main entry point.

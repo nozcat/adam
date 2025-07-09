@@ -328,7 +328,6 @@ async function updateExistingPR (issue, repoInfo) {
 }
 
 /*
-
 async function handlePRFeedback (prNumber, branchName, repoInfo) {
   try {
     const owner = repoInfo?.owner || process.env.GITHUB_OWNER
@@ -367,24 +366,6 @@ async function handlePRFeedback (prNumber, branchName, repoInfo) {
       hasFeedback: false,
       feedbackSummary: null
     }
-  }
-}
-
-async function getActivePRs (repoInfo) {
-  try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
-
-    const { data: pulls } = await octokit.rest.pulls.list({
-      owner,
-      repo,
-      state: 'open'
-    })
-
-    return pulls.filter(pr => pr.body && pr.body.includes('Generated with Claude Code'))
-  } catch (error) {
-    log('❌', `Error getting active PRs: ${error.message}`, 'red')
-    return []
   }
 }
 
