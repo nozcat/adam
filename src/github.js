@@ -1,6 +1,7 @@
 const { Octokit } = require('@octokit/rest')
 const simpleGit = require('simple-git')
 const { log } = require('./util')
+const { callClaude } = require('./claude')
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 
@@ -128,19 +129,49 @@ async function checkoutBranch (branchName, repoPath) {
   }
 }
 
-/*
+/**
+ * Creates a GitHub pull request with an AI-generated description based on recent commits.
+ * Uses Claude to analyze recent commits and generate a meaningful PR description.
+ *
+ * @param {Object} issue - The issue object containing identifier, title, and description
+ * @param {string} issue.identifier - The issue identifier (e.g., "PROJ-123")
+ * @param {string} issue.title - The issue title
+ * @param {string} issue.description - The issue description
+ * @param {string} branchName - The name of the branch to create the PR from
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.owner - Repository owner/organization
+ * @param {string} repoInfo.name - Repository name
+ * @returns {Promise<Object|null>} - The created PR object from GitHub API, or null if failed
+ *
+ * @requires Environment variables:
+ * - GITHUB_TOKEN: GitHub personal access token with repo scope
+ * - GITHUB_OWNER: Default repository owner (optional if provided in repoInfo)
+ * - GITHUB_REPO: Default repository name (optional if provided in repoInfo)
+ * - BASE_BRANCH: The base branch for PRs (defaults to 'main')
+ */
 async function createPR (issue, branchName, repoInfo) {
   try {
     const owner = repoInfo?.owner || process.env.GITHUB_OWNER
     const repo = repoInfo?.name || process.env.GITHUB_REPO
+    const baseBranch = process.env.BASE_BRANCH || 'main'
+    const repoPath = `./${repoInfo?.name || process.env.GITHUB_REPO}`
 
+    // Push the branch to remote before creating PR
+    const git = simpleGit(repoPath)
+    await git.push('origin', branchName)
+    log('📤', `Pushed branch ${branchName} to remote`, 'blue')
+
+    // Generate the good PR description.
+    const prDescription = await generatePRDescription(issue, baseBranch, repoPath)
+
+    // Create the PR.
     const { data: pr } = await octokit.rest.pulls.create({
       owner,
       repo,
       title: `${issue.identifier}: ${issue.title}`,
       head: branchName,
-      base: process.env.BASE_BRANCH || 'main',
-      body: `Fixes Linear issue: ${issue.identifier}\n\n${issue.description}\n\n🤖 Generated with Claude Code`
+      base: baseBranch,
+      body: prDescription
     })
 
     log('📝', `Created PR: ${pr.html_url}`, 'green')
@@ -151,6 +182,51 @@ async function createPR (issue, branchName, repoInfo) {
   }
 }
 
+/**
+ * Generates a PR description using Claude based on recent commits and issue context.
+ * Falls back to a default description if Claude fails or no commits are found.
+ *
+ * @param {Object} issue - The issue object containing identifier, title, and description
+ * @param {string} baseBranch - The base branch to compare commits against
+ * @param {string} repoPath - The path to the repository directory
+ * @returns {Promise<string>} - The generated PR description
+ */
+async function generatePRDescription (issue, baseBranch, repoPath) {
+  const defaultDescription = `Fixes Linear issue: ${issue.identifier}\n\n${issue.description}\n\n🤖 Generated with Claude Code`
+  
+  try {
+    const git = simpleGit(repoPath)
+    const commits = await git.log(['--oneline', `${baseBranch}..HEAD`])
+    
+    if (commits.all.length === 0) {
+      return defaultDescription
+    }
+
+    const commitList = commits.all.map(commit => `- ${commit.hash}`).join('\n')
+    const prompt = `
+Generate and return a concise PR description based on these recent commits.
+Focus on what was changed and why. Return only the description without any preamble or explanation.
+
+Recent commits:
+${commitList}
+
+Issue context:
+${issue.identifier}: ${issue.title}
+${issue.description}`
+
+    const claudeDescription = await callClaude(prompt, repoPath, false)
+    if (claudeDescription && claudeDescription.trim()) {
+      return claudeDescription.trim()
+    }
+    
+    return defaultDescription
+  } catch (error) {
+    log('⚠️', `Failed to generate PR description: ${error.message}`, 'yellow')
+    return defaultDescription
+  }
+}
+
+/*
 async function findExistingBranchAndPR (issue, repoInfo) {
   try {
     const branchName = issue.branchName || `feature/${issue.identifier.toLowerCase()}`
@@ -289,11 +365,11 @@ async function checkPRApproval (prNumber, repoInfo) {
 
 module.exports = {
   ensureRepositoryExists,
-  checkoutBranch
+  checkoutBranch,
+  createPR
   /*
   checkBranchExists,
   createBranch,
-  createPR,
   findExistingBranchAndPR,
   handlePRFeedback,
   getActivePRs,

@@ -4,56 +4,52 @@ const { marked } = require('marked')
 const { markedTerminal } = require('marked-terminal')
 const { log } = require('./util')
 
-// Configure marked to use terminal renderer
-marked.use(markedTerminal())
+async function callClaude (prompt, dir, debug) {
+  return new Promise((resolve, reject) => {
+    log('🤖', 'Starting Claude Code...', 'blue')
+    log('📝', `Prompt: ${prompt}`, 'yellow')
 
-function cleanToolResult (content) {
-  if (typeof content !== 'string') {
-    return content
-  }
+    const args = ['--print', '--verbose', '--dangerously-skip-permissions', '--output-format=stream-json', prompt]
+    const options = { stdio: ['ignore', 'pipe', 'pipe'], cwd: dir }
+    const claude = spawn('claude', [...args], options)
 
-  // Remove system-reminder tags and their content
-  const cleanedContent = content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
+    let lineBuffer = ''
+    let result
 
-  // Trim empty lines at the top and bottom
-  const lines = cleanedContent.split('\n')
-  let start = 0
-  let end = lines.length - 1
+    // Handle NDJSON (newline-delimited JSON)
+    claude.stdout.on('data', (data) => {
+      lineBuffer += data.toString()
 
-  // Find first non-empty line
-  while (start < lines.length && lines[start].trim() === '') {
-    start++
-  }
+      // Split by newlines and process complete lines
+      const lines = lineBuffer.split('\n')
+      lineBuffer = lines.pop() || '' // Keep the last incomplete line in buffer
+      for (const line of lines) {
+        result = result || displayLine(line, debug)
+      }
+    })
 
-  // Find last non-empty line
-  while (end >= 0 && lines[end].trim() === '') {
-    end--
-  }
+    claude.stderr.on('data', (data) => {
+      const chunk = data.toString()
+      process.stderr.write(chalk.red(chunk))
+    })
 
-  if (start > end) {
-    return ''
-  }
+    claude.on('close', (code) => {
+      result = result || displayLine(lineBuffer, debug)
 
-  return lines.slice(start, end + 1).join('\n')
-}
+      if (code === 0) {
+        log('✅', 'Claude Code completed successfully', 'green')
+        resolve(result)
+      } else {
+        log('❌', `Claude Code failed with exit code: ${code}`, 'red')
+        reject(new Error(`Claude Code failed with exit code: ${code}`))
+      }
+    })
 
-function limitLinesWithMore (content, maxLines = 10) {
-  if (typeof content !== 'string') {
-    return content
-  }
-
-  const lines = content.split('\n')
-  if (lines.length <= maxLines) {
-    return content
-  }
-
-  const halfLines = Math.floor(maxLines / 2)
-  const topLines = lines.slice(0, halfLines)
-  const bottomLines = lines.slice(-halfLines)
-  const omittedCount = lines.length - (halfLines * 2)
-  const moreIndicator = `... (${omittedCount} more lines)`
-
-  return topLines.join('\n') + '\n' + chalk.dim(moreIndicator) + '\n' + bottomLines.join('\n')
+    claude.on('error', (error) => {
+      log('❌', `Failed to spawn Claude Code: ${error.message}`, 'red')
+      reject(error)
+    })
+  })
 }
 
 function logTodoWrite (input) {
@@ -118,6 +114,14 @@ function displayLine (line, debug) {
         } else if (content.type === 'tool_use') {
           if (content.name === 'TodoWrite') {
             logTodoWrite(content.input)
+          } else if (content.name === 'Task') {
+            logTaskTool(content.input)
+          } else if (content.name === 'Bash') {
+            logBashTool(content.input)
+          } else if (content.name === 'Read') {
+            logReadTool(content.input)
+          } else if (content.name === 'LS') {
+            logLsTool(content.input)
           } else {
             log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
           }
@@ -153,52 +157,80 @@ function displayLine (line, debug) {
   }
 }
 
-async function callClaude (prompt, dir, debug) {
-  return new Promise((resolve, reject) => {
-    log('🤖', 'Starting Claude Code...', 'blue')
-    log('📝', `Prompt: ${prompt}`, 'yellow')
+function logTaskTool (input) {
+  if (!input.description || !input.prompt) {
+    log('🔧', 'Task started', 'cyan')
+    return
+  }
 
-    const args = ['--print', '--verbose', '--dangerously-skip-permissions', '--output-format=stream-json', prompt]
-    const options = { stdio: ['ignore', 'pipe', 'pipe'], cwd: dir }
-    const claude = spawn('claude', [...args], options)
+  log('🔧', `Task: ${chalk.cyan(input.description)}`, 'cyan')
+  
+  // Format the prompt nicely with markdown
+  const formattedPrompt = marked.parse(input.prompt).trim()
+  console.log(chalk.dim('   Prompt:'))
+  console.log(formattedPrompt.split('\n').map(line => `   ${line}`).join('\n'))
+  console.log()
+}
 
-    let lineBuffer = ''
-    let result
+function logBashTool (input) {
+  log('🔧', `Bash: ${chalk.white(input.command)} ${chalk.green(`# ${input.description}`)}`, 'cyan')
+}
 
-    // Handle NDJSON (newline-delimited JSON)
-    claude.stdout.on('data', (data) => {
-      lineBuffer += data.toString()
+function logReadTool (input) {
+  log('🔧', `Read: ${chalk.white(input.file_path)}`, 'cyan')
+}
 
-      // Split by newlines and process complete lines
-      const lines = lineBuffer.split('\n')
-      lineBuffer = lines.pop() || '' // Keep the last incomplete line in buffer
-      for (const line of lines) {
-        result = result || displayLine(line, debug)
-      }
-    })
+function logLsTool (input) {
+  log('🔧', `LS: ${chalk.white(input.path)}`, 'cyan')
+}
 
-    claude.stderr.on('data', (data) => {
-      const chunk = data.toString()
-      process.stderr.write(chalk.red(chunk))
-    })
+function cleanToolResult (content) {
+  if (typeof content !== 'string') {
+    return content
+  }
 
-    claude.on('close', (code) => {
-      result = result || displayLine(lineBuffer, debug)
+  // Remove system-reminder tags and their content
+  const cleanedContent = content.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '')
 
-      if (code === 0) {
-        log('✅', 'Claude Code completed successfully', 'green')
-        resolve(result)
-      } else {
-        log('❌', `Claude Code failed with exit code: ${code}`, 'red')
-        reject(new Error(`Claude Code failed with exit code: ${code}`))
-      }
-    })
+  // Trim empty lines at the top and bottom
+  const lines = cleanedContent.split('\n')
+  let start = 0
+  let end = lines.length - 1
 
-    claude.on('error', (error) => {
-      log('❌', `Failed to spawn Claude Code: ${error.message}`, 'red')
-      reject(error)
-    })
-  })
+  // Find first non-empty line
+  while (start < lines.length && lines[start].trim() === '') {
+    start++
+  }
+
+  // Find last non-empty line
+  while (end >= 0 && lines[end].trim() === '') {
+    end--
+  }
+
+  if (start > end) {
+    return ''
+  }
+
+  return lines.slice(start, end + 1).join('\n')
+}
+
+function limitLinesWithMore (content, maxLines = 10) {
+  if (typeof content !== 'string') {
+    return content
+  }
+
+  const lines = content.split('\n')
+  if (lines.length <= maxLines) {
+    return content
+  }
+
+  const halfLines = Math.floor(maxLines / 2)
+  const topLines = lines.slice(0, halfLines)
+  const bottomLines = lines.slice(-halfLines)
+  const omittedCount = lines.length - (halfLines * 2)
+  const moreIndicator = `... (${omittedCount} more lines)`
+
+  return topLines.join('\n') + '\n' + chalk.dim(moreIndicator) + '\n' + bottomLines.join('\n')
 }
 
 module.exports = { callClaude }

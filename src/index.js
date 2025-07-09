@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 const DEBUG = process.env.DEBUG === 'true'
@@ -190,12 +190,14 @@ async function processIssue (issue) {
     await ensureRepositoryExists(issue.repository)
   } catch (error) {
     log('❌', `Failed to ensure repository exists for issue ${issue.identifier}: ${error.message}`, 'red')
+    return
   }
 
   // Checkout the branch for the issue.
   const checkedOutBranch = await checkoutBranch(issue.branchName, issue.repository.name)
   if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
+    return
   }
 
   // Call Claude to generate the code.
@@ -203,6 +205,16 @@ async function processIssue (issue) {
   const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`, DEBUG)
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
+    return
+  }
+
+  // Create a PR for the issue.
+  const pr = await createPR(issue, issue.branchName, issue.repository)
+  if (pr) {
+    log('🎉', `Successfully created PR for issue: ${issue.identifier}`, 'green')
+  } else {
+    log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
+    return
   }
 }
 

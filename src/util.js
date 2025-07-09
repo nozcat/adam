@@ -1,4 +1,9 @@
 const chalk = require('chalk')
+const { marked } = require('marked')
+const { markedTerminal } = require('marked-terminal')
+
+// Configure marked to use terminal renderer
+marked.use(markedTerminal())
 
 function log (emoji, message, color) {
   if (color) {
