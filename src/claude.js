@@ -11,8 +11,6 @@ const { log } = require('./util')
  * @returns {Promise<string>} The result from a successful Claude Code run
  */
 async function callClaude (prompt, dir, debug) {
-  prompt = 'Describe the instruction.rs file'
-
   return new Promise((resolve, reject) => {
     log('🤖', 'Starting Claude Code...', 'blue')
     log('📝', `Prompt: ${prompt}`, 'yellow')
