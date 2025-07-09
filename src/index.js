@@ -193,9 +193,36 @@ async function processIssue (issue) {
   }
 
   // Checkout the branch for the issue.
-  if (!await checkoutBranch(issue.branchName, issue.repository.name)) {
+  const checkedOutBranch = await checkoutBranch(issue.branchName, issue.repository.name)
+  if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
   }
+
+  // Call Claude to generate the code.
+  const prompt = await generatePrompt(issue)
+  const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`, DEBUG)
+  if (!claudeSuccess) {
+    log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
+  }
+}
+
+/**
+ * Generate a prompt for Claude Code to implement a Linear issue.
+ *
+ * @param {Object} issue - The Linear issue object
+ * @param {string} issue.title - The title of the issue
+ * @param {string} [issue.description] - The description of the issue
+ * @returns {Promise<string>} A formatted prompt string for Claude Code
+ */
+async function generatePrompt (issue) {
+  return `
+    Please implement the following issue:
+
+    Title: ${issue.title}
+    Description: ${issue.description || ''}
+
+    Complete this task completely and commit your changes when done.
+  `
 }
 
 main()
