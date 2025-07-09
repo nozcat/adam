@@ -8,9 +8,11 @@ const { log } = require('./util')
  * @param {string} prompt - The prompt to send to Claude Code
  * @param {string} dir - The directory to run Claude Code in
  * @param {boolean} debug - Whether to enable debug logging
- * @returns {Promise<string>} The result from Claude Code
+ * @returns {Promise<string>} The result from a successful Claude Code run
  */
 async function callClaude (prompt, dir, debug) {
+  prompt = 'Describe the instruction.rs file'
+
   return new Promise((resolve, reject) => {
     log('🤖', 'Starting Claude Code...', 'blue')
     log('📝', `Prompt: ${prompt}`, 'yellow')
@@ -43,8 +45,13 @@ async function callClaude (prompt, dir, debug) {
       result = result || logLine(lineBuffer, debug)
 
       if (code === 0) {
-        log('✅', 'Claude Code completed successfully', 'green')
-        resolve(result)
+        if (result.is_error) {
+          log('❌', `Claude Code failed: ${result.result}`, 'red')
+          reject(new Error(`Claude Code failed: ${result.result}`))
+        } else {
+          log('✅', 'Claude Code completed successfully', 'green')
+          resolve(result.result)
+        }
       } else {
         log('❌', `Claude Code failed with exit code: ${code}`, 'red')
         reject(new Error(`Claude Code failed with exit code: ${code}`))
@@ -62,7 +69,7 @@ async function callClaude (prompt, dir, debug) {
  * Processes and logs a single line of NDJSON output from Claude Code
  * @param {string} line - The JSON line to process
  * @param {boolean} debug - Whether to enable debug logging
- * @returns {string|undefined} The result if this was a result line
+ * @returns {Object|undefined} The result object if this was a result line, which includes the result text and is_error flag
  */
 function logLine (line, debug) {
   if (line.trim() === '') return
@@ -71,7 +78,7 @@ function logLine (line, debug) {
     const json = JSON.parse(line)
 
     if (json.type === 'result') {
-      return logResult(json)
+      return logResult(json, debug)
     } else if (json.type === 'assistant') {
       return logAssistant(json, debug)
     } else if (json.type === 'user') {
@@ -91,11 +98,14 @@ function logLine (line, debug) {
  * @param {string} json.result - The result text to display
  * @returns {string} The result text
  */
-function logResult (json) {
-  if (json.type === 'result') {
-    log('🤖', marked.parse(json.result).trim())
+function logResult (json, debug) {
+  log('🤖', marked.parse(json.result).trim())
+
+  if (debug) {
+    log('🔧', JSON.stringify(json), 'cyan')
   }
-  return json.result
+
+  return { result: json.result, is_error: json.is_error }
 }
 
 /**
