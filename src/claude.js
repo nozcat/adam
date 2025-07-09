@@ -3,6 +3,13 @@ const chalk = require('chalk')
 const { marked } = require('marked')
 const { log } = require('./util')
 
+/**
+ * Executes Claude Code with the given prompt and returns the result
+ * @param {string} prompt - The prompt to send to Claude Code
+ * @param {string} dir - The directory to run Claude Code in
+ * @param {boolean} debug - Whether to enable debug logging
+ * @returns {Promise<string>} The result from Claude Code
+ */
 async function callClaude (prompt, dir, debug) {
   return new Promise((resolve, reject) => {
     log('🤖', 'Starting Claude Code...', 'blue')
@@ -51,6 +58,86 @@ async function callClaude (prompt, dir, debug) {
   })
 }
 
+/**
+ * Processes and logs a single line of NDJSON output from Claude Code
+ * @param {string} line - The JSON line to process
+ * @param {boolean} debug - Whether to enable debug logging
+ * @returns {string|undefined} The result if this was a result line
+ */
+function logLine (line, debug) {
+  if (line.trim() === '') return
+
+  try {
+    const json = JSON.parse(line)
+
+    if (json.type === 'result') {
+      return logResult(json)
+    } else if (json.type === 'assistant') {
+      return logAssistant(json, debug)
+    } else if (json.type === 'user') {
+      return logUser(json, debug)
+    } else if (debug) {
+      log('🔧', JSON.stringify(json), 'cyan')
+    }
+  } catch (error) {
+    log('❌', `Failed to parse line as JSON: ${error.message}`, 'red')
+    log('❌', `Line: ${line}`, 'red')
+  }
+}
+
+/**
+ * Logs a result message from Claude Code
+ * @param {Object} json - The parsed JSON result object
+ * @param {string} json.result - The result text to display
+ * @returns {string} The result text
+ */
+function logResult (json) {
+  if (json.type === 'result') {
+    log('🤖', marked.parse(json.result).trim())
+  }
+  return json.result
+}
+
+/**
+ * Logs assistant messages and tool usage
+ * @param {Object} json - The parsed JSON assistant message
+ * @param {Object} json.message - The message object
+ * @param {Array} json.message.content - Array of content objects
+ * @param {boolean} debug - Whether to enable debug logging
+ */
+function logAssistant (json, debug) {
+  for (const content of json.message.content) {
+    if (content.type === 'text') {
+      log('🤖', marked.parse(content.text).trim())
+    }
+
+    if (content.type === 'tool_use') {
+      if (content.name === 'TodoWrite') {
+        logTodoWrite(content.input)
+      } else if (content.name === 'Task') {
+        logTaskTool(content.input)
+      } else if (content.name === 'Bash') {
+        logBashTool(content.input)
+      } else if (content.name === 'Read') {
+        logReadTool(content.input)
+      } else if (content.name === 'LS') {
+        logLsTool(content.input)
+      } else {
+        log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
+      }
+    }
+
+    if (debug) {
+      log('🔧', JSON.stringify(content), 'cyan')
+    }
+  }
+}
+
+/**
+ * Logs TodoWrite tool usage with formatted todo list display
+ * @param {Object} input - The TodoWrite tool input
+ * @param {Array} input.todos - Array of todo objects
+ */
 function logTodoWrite (input) {
   if (!input.todos || !Array.isArray(input.todos)) {
     log('📝', 'Todo list updated', 'yellow')
@@ -93,62 +180,13 @@ function logTodoWrite (input) {
   console.log()
 }
 
-function logLine (line, debug) {
-  if (line.trim() === '') return
-
-  try {
-    const json = JSON.parse(line)
-
-    if (json.type === 'result') {
-      return logResult(json)
-    } else if (json.type === 'assistant') {
-      return logAssistant(json, debug)
-    } else if (json.type === 'user') {
-      return logUser(json, debug)
-    } else if (debug) {
-      log('🔧', JSON.stringify(json), 'cyan')
-    }
-  } catch (error) {
-    log('❌', `Failed to parse line as JSON: ${error.message}`, 'red')
-    log('❌', `Line: ${line}`, 'red')
-  }
-}
-
-function logResult (json) {
-  if (json.type === 'result') {
-    log('🤖', marked.parse(json.result).trim())
-  }
-  return json.result
-}
-
-function logAssistant (json, debug) {
-  for (const content of json.message.content) {
-    if (content.type === 'text') {
-      log('🤖', marked.parse(content.text).trim())
-    }
-
-    if (content.type === 'tool_use') {
-      if (content.name === 'TodoWrite') {
-        logTodoWrite(content.input)
-      } else if (content.name === 'Task') {
-        logTaskTool(content.input)
-      } else if (content.name === 'Bash') {
-        logBashTool(content.input)
-      } else if (content.name === 'Read') {
-        logReadTool(content.input)
-      } else if (content.name === 'LS') {
-        logLsTool(content.input)
-      } else {
-        log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
-      }
-    }
-
-    if (debug) {
-      log('🔧', JSON.stringify(content), 'cyan')
-    }
-  }
-}
-
+/**
+ * Logs user messages and tool results
+ * @param {Object} json - The parsed JSON user message
+ * @param {Object} json.message - The message object
+ * @param {Array} json.message.content - Array of content objects
+ * @param {boolean} debug - Whether to enable debug logging
+ */
 function logUser (json, debug) {
   for (const content of json.message.content) {
     if (content.type === 'tool_result') {
@@ -162,6 +200,12 @@ function logUser (json, debug) {
   }
 }
 
+/**
+ * Logs Task tool usage with formatted description and prompt
+ * @param {Object} input - The Task tool input
+ * @param {string} input.description - Brief description of the task
+ * @param {string} input.prompt - The full task prompt
+ */
 function logTaskTool (input) {
   if (!input.description || !input.prompt) {
     log('🔧', 'Task started', 'cyan')
@@ -177,18 +221,39 @@ function logTaskTool (input) {
   console.log()
 }
 
+/**
+ * Logs Bash tool usage with command and description
+ * @param {Object} input - The Bash tool input
+ * @param {string} input.command - The bash command to execute
+ * @param {string} input.description - Description of what the command does
+ */
 function logBashTool (input) {
   log('🔧', `Bash: ${chalk.white(input.command)} ${chalk.green(`# ${input.description}`)}`, 'cyan')
 }
 
+/**
+ * Logs Read tool usage with file path
+ * @param {Object} input - The Read tool input
+ * @param {string} input.file_path - The path to the file being read
+ */
 function logReadTool (input) {
   log('🔧', `Read: ${chalk.white(input.file_path)}`, 'cyan')
 }
 
+/**
+ * Logs LS tool usage with directory path
+ * @param {Object} input - The LS tool input
+ * @param {string} input.path - The path to the directory being listed
+ */
 function logLsTool (input) {
   log('🔧', `LS: ${chalk.white(input.path)}`, 'cyan')
 }
 
+/**
+ * Cleans tool result content by removing system reminders and trimming empty lines
+ * @param {string|*} content - The content to clean
+ * @returns {string|*} The cleaned content
+ */
 function cleanToolResult (content) {
   if (typeof content !== 'string') {
     return content
@@ -219,6 +284,12 @@ function cleanToolResult (content) {
   return lines.slice(start, end + 1).join('\n')
 }
 
+/**
+ * Limits content to a maximum number of lines, showing top and bottom with indicator
+ * @param {string|*} content - The content to limit
+ * @param {number} maxLines - Maximum number of lines to show (default: 10)
+ * @returns {string|*} The limited content with "more" indicator if truncated
+ */
 function limitLinesWithMore (content, maxLines = 10) {
   if (typeof content !== 'string') {
     return content
