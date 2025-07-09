@@ -2,23 +2,28 @@ const { Octokit } = require('@octokit/rest')
 const simpleGit = require('simple-git')
 const { log } = require('./util')
 
-const TARGET_REPO = process.env.TARGET_REPO || process.cwd()
-const git = simpleGit(TARGET_REPO)
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 
-function extractRepositoryFromDescription (description) {
-  if (!description) return null
-
-  const match = description.match(/REPOSITORY=([^/]+)\/([^\s]+)/)
-  if (match) {
-    return {
-      owner: match[1],
-      name: match[2]
-    }
-  }
-  return null
-}
-
+/**
+ * Ensures a GitHub repository exists locally by cloning it if not present.
+ * Authenticates using GitHub token and configures git user credentials for commits.
+ * 
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.name - Repository name
+ * @param {string} repoInfo.owner - Repository owner/organization
+ * @returns {Promise<boolean>} - True if repository exists/was cloned successfully, false otherwise
+ * 
+ * @requires Environment variables:
+ * - GITHUB_TOKEN: GitHub personal access token with repo scope
+ * - GITHUB_USERNAME: GitHub username for commit attribution
+ * - GITHUB_EMAIL: Email address for commit attribution
+ * 
+ * @example
+ * const success = await ensureRepositoryExists({
+ *   name: 'my-repo',
+ *   owner: 'username'
+ * })
+ */
 async function ensureRepositoryExists (repoInfo) {
   if (!repoInfo) return false
 
@@ -26,15 +31,30 @@ async function ensureRepositoryExists (repoInfo) {
   const fs = require('fs')
 
   if (fs.existsSync(repoPath)) {
-    log('✅', `Repository ${repoInfo.name} already exists`, 'green')
     return true
   }
 
   try {
-    const repoUrl = `https://github.com/${repoInfo.owner}/${repoInfo.name}.git`
+    const username = process.env.GITHUB_USERNAME
+    const email = process.env.GITHUB_EMAIL
+    const token = process.env.GITHUB_TOKEN
+
+    if (!username || !email || !token) {
+      log('❌', 'GitHub credentials not configured. Please set GITHUB_USERNAME, GITHUB_EMAIL, and GITHUB_TOKEN in your environment.', 'red')
+      return false
+    }
+
+    const repoUrl = `https://${token}@github.com/${repoInfo.owner}/${repoInfo.name}.git`
     log('📥', `Cloning repository ${repoInfo.owner}/${repoInfo.name}...`, 'blue')
-    await simpleGit().clone(repoUrl, repoPath)
-    log('✅', `Successfully cloned repository to ${repoPath}`, 'green')
+    
+    const git = simpleGit()
+    await git.clone(repoUrl, repoPath)
+    
+    const repoGit = simpleGit(repoPath)
+    await repoGit.addConfig('user.name', username)
+    await repoGit.addConfig('user.email', email)
+    
+    log('✅', `Successfully cloned repository to ${repoPath} and configured user credentials`, 'green')
     return true
   } catch (error) {
     log('❌', `Failed to clone repository: ${error.message}`, 'red')
@@ -42,6 +62,7 @@ async function ensureRepositoryExists (repoInfo) {
   }
 }
 
+/*
 async function checkBranchExists (branchName) {
   try {
     const branches = await git.branch(['--all'])
@@ -230,10 +251,11 @@ async function checkPRApproval (prNumber, repoInfo) {
     return false
   }
 }
+*/
 
 module.exports = {
-  extractRepositoryFromDescription,
   ensureRepositoryExists,
+  /*
   checkBranchExists,
   createBranch,
   createPR,
@@ -241,4 +263,5 @@ module.exports = {
   handlePRFeedback,
   getActivePRs,
   checkPRApproval
+  */
 }

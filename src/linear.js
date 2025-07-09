@@ -1,19 +1,44 @@
 const { LinearClient } = require('@linear/sdk')
 const { log } = require('./util')
 
-async function getLinearClient () {
-  return new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+// Initialize the Linear client.
+const linearClient = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+
+/**
+ * Poll Linear for assigned issues.
+ *
+ * @returns {Promise<Array>} A list of issues with the repository information.
+ */
+async function pollLinear () {
+  log('🔄', 'Polling Linear...', 'blue')
+
+  try {
+    const issues = await getAssignedIssues()
+
+    for (const issue of issues) {
+      issue.repository = await getRepositoryFromIssue(issue)
+    }
+
+    return issues
+  } catch (error) {
+    log('❌', `Error polling Linear: ${error.message}`, 'red')
+    return []
+  }
 }
 
+/**
+ * Get all assigned issues.
+ *
+ * @returns {Promise<Array>} A list of issues.
+ */
 async function getAssignedIssues () {
   try {
-    const linearClient = await getLinearClient()
     const user = await linearClient.viewer
 
     const issues = await linearClient.issues({
       filter: {
         assignee: { id: { eq: user.id } },
-        state: { name: { nin: ['Done', 'Canceled'] } }
+        state: { name: { nin: ['Backlog', 'Done', 'Canceled', 'Duplicate'] } }
       }
     })
 
@@ -24,63 +49,48 @@ async function getAssignedIssues () {
   }
 }
 
-async function getIssueProject (issue) {
+/**
+ * Get the repository from an issue.
+ *
+ * @param {Object} issue - The issue to get the repository from.
+ * @returns {Promise<Object>} The repository information.
+ */
+async function getRepositoryFromIssue (issue) {
   try {
-    return await issue.project()
-  } catch (error) {
-    log('⚠️', `Error getting project for issue ${issue.identifier}: ${error.message}`, 'yellow')
+    const project = await issue.project
+    const repository = extractRepository(project.content)
+    return repository
+  } catch (error) { 
+    log('⚠️', `Error getting repository from issue ${issue.identifier}: ${error.message}`, 'yellow')
     return null
   }
 }
 
-async function isIssueComplete (issue, repoInfo, findExistingBranchAndPR) {
-  try {
-    const { existingPR } = await findExistingBranchAndPR(issue, repoInfo)
+/**
+ * Extract the repository from an project content.
+ *
+ * @param {string} content - The project content.
+ * @returns {Object} The repository information.
+ */
+function extractRepository (content) {
+  if (!content) return null
 
-    if (existingPR && existingPR.state === 'closed' && existingPR.merged) {
-      return true
+  const match = content.match(/REPOSITORY=([^/]+)\/([^\s]+)/)
+  if (match) {
+    return {
+      owner: match[1],
+      name: match[2]
     }
-
-    return false
-  } catch (error) {
-    log('⚠️', `Failed to check if issue is complete: ${error.message}`, 'yellow')
-    return false
   }
+  return null
 }
 
-async function pollLinear () {
-  log('🔄', 'Polling Linear...', 'blue')
-
-  try {
-    const issues = await getAssignedIssues()
-    log('👀', `Found ${issues.length} assigned issues`, 'blue')
-
-    const issuesWithProjects = []
-
-    for (const issue of issues) {
-      const project = await getIssueProject(issue)
-      const projectName = project ? project.name : 'No Project'
-      const projectDescription = project ? project.description : 'No Description'
-
-      issuesWithProjects.push({
-        issue,
-        project,
-        projectName,
-        projectDescription
-      })
-    }
-
-    return issuesWithProjects
-  } catch (error) {
-    log('❌', `Error polling Linear: ${error.message}`, 'red')
-    return []
-  }
+function getIssueShortName (issue) {
+  const repository = issue.repository ? `${issue.repository.owner}/${issue.repository.name}` : 'unknown repository'
+  return `[${issue.identifier}] ${issue.title} (${repository})`
 }
 
 module.exports = {
-  getLinearClient,
-  getAssignedIssues,
-  getIssueProject,
-  isIssueComplete,
-  pollLinear
+  pollLinear,
+  getIssueShortName
 }

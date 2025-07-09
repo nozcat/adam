@@ -3,7 +3,6 @@ require('dotenv').config()
 const { callClaude } = require('./claude')
 const { log } = require('./util')
 const {
-  extractRepositoryFromDescription,
   ensureRepositoryExists,
   createBranch,
   createPR,
@@ -12,13 +11,26 @@ const {
   getActivePRs,
   checkPRApproval
 } = require('./github')
-const {
-  pollLinear,
-  isIssueComplete
-} = require('./linear')
+const { pollLinear, getIssueShortName } = require('./linear')
 
 const TARGET_REPO = process.env.TARGET_REPO || process.cwd()
 const DEBUG = process.env.DEBUG === 'true'
+
+/*
+async function isIssueComplete (issue, repoInfo, findExistingBranchAndPR) {
+  try {
+    const { existingPR } = await findExistingBranchAndPR(issue, repoInfo)
+
+    if (existingPR && existingPR.state === 'closed' && existingPR.merged) {
+      return true
+    }
+
+    return false
+  } catch (error) {
+    log('⚠️', `Failed to check if issue is complete: ${error.message}`, 'yellow')
+    return false
+  }
+}
 
 async function processIssue (issue) {
   const issueId = issue.identifier
@@ -113,36 +125,82 @@ async function runPolling () {
     }
   }
 }
+    */
 
+/**
+ * Main entry point.
+ */
 async function main () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
 
-  // Temporary: describe instruction.rs file
-  // const prompt = 'Please describe the instruction.rs file'
-  const prompt = 'Please implement the decode add instruction'
-  const result = await callClaude(prompt, TARGET_REPO, DEBUG)
-  // const { marked } = require('marked')
+  // Main worker loop. We poll for actions every 30 seconds.
+  while (true) {
+    const start = Date.now()
 
-  // Main polling loop
-  setInterval(async () => {
-    await runPolling()
-    // Note: monitorPRs now needs repoInfo, so we'll call it per repository
-  }, 30000)
+    try {
+      await performActions()
+    } catch (error) {
+      log('❌', `Error: ${error.message}`, 'red')
+    }
 
-  // Run once immediately
-  await runPolling()
+    const elapsed = Date.now() - start
+    const remaining = 30000 - elapsed 
+
+    if (remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining))
+    }
+  }
 }
 
-if (require.main === module) {
-  main().catch(error => {
-    log('❌', `Application error: ${error.message}`, 'red')
-    process.exit(1)
-  })
+/**
+ * Perform one iteration of actions in the main loop.
+ */
+async function performActions () {
+  const issues = await pollLinear()
+
+  printIssues(issues)
+
+  for (const issue of issues) {
+    await processIssue(issue)
+  }
 }
 
-module.exports = {
-  processIssue,
-  monitorPRs,
-  runPolling,
-  main
+/**
+ * Print the issues to the console.
+ *
+ * @param {Array} issues - The issues to print.
+ */
+function printIssues (issues) {
+  log('🔍', `Found ${issues.length} assigned open issues`, 'blue')
+
+  for (const issue of issues) {
+    console.log(`  - ${getIssueShortName(issue)}`)
+  }
+
+  console.log()
 }
+
+/**
+ * Process an issue.
+ *
+ * @param {Object} issue - The issue to process.
+ */
+async function processIssue (issue) {
+  log('🔄', `Processing ${getIssueShortName(issue)}`, 'blue')
+
+  // Check we have a known repository for the issue.
+  if (!issue.repository) {
+    log('⚠️', `No repository found for issue ${issue.identifier}. Skipping...`, 'yellow')
+    return
+  }
+
+  // Clone the repository if it doesn't exist.
+  try {
+    await ensureRepositoryExists(issue.repository)
+  } catch (error) {
+    log('❌', `Failed to ensure repository exists for issue ${issue.identifier}: ${error.message}`, 'red')
+    return
+  }
+}
+
+main()
