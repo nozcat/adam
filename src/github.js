@@ -193,11 +193,11 @@ async function createPR (issue, branchName, repoInfo) {
  */
 async function generatePRDescription (issue, baseBranch, repoPath) {
   const defaultDescription = `Fixes Linear issue: ${issue.identifier}\n\n${issue.description}\n\n🤖 Generated with Claude Code`
-  
+
   try {
     const git = simpleGit(repoPath)
     const commits = await git.log(['--oneline', `${baseBranch}..HEAD`])
-    
+
     if (commits.all.length === 0) {
       return defaultDescription
     }
@@ -218,7 +218,7 @@ ${issue.description}`
     if (claudeDescription && claudeDescription.trim()) {
       return claudeDescription.trim()
     }
-    
+
     return defaultDescription
   } catch (error) {
     log('⚠️', `Failed to generate PR description: ${error.message}`, 'yellow')

@@ -214,7 +214,6 @@ async function processIssue (issue) {
     log('🎉', `Successfully created PR for issue: ${issue.identifier}`, 'green')
   } else {
     log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
-    return
   }
 }
 

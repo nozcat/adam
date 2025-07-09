@@ -1,7 +1,6 @@
 const { spawn } = require('child_process')
 const chalk = require('chalk')
 const { marked } = require('marked')
-const { markedTerminal } = require('marked-terminal')
 const { log } = require('./util')
 
 async function callClaude (prompt, dir, debug) {
@@ -24,7 +23,7 @@ async function callClaude (prompt, dir, debug) {
       const lines = lineBuffer.split('\n')
       lineBuffer = lines.pop() || '' // Keep the last incomplete line in buffer
       for (const line of lines) {
-        result = result || displayLine(line, debug)
+        result = result || logLine(line, debug)
       }
     })
 
@@ -34,7 +33,7 @@ async function callClaude (prompt, dir, debug) {
     })
 
     claude.on('close', (code) => {
-      result = result || displayLine(lineBuffer, debug)
+      result = result || logLine(lineBuffer, debug)
 
       if (code === 0) {
         log('✅', 'Claude Code completed successfully', 'green')
@@ -94,66 +93,72 @@ function logTodoWrite (input) {
   console.log()
 }
 
-function displayLine (line, debug) {
+function logLine (line, debug) {
   if (line.trim() === '') return
 
   try {
     const json = JSON.parse(line)
 
     if (json.type === 'result') {
-      if (debug) {
-        log('🤖', marked.parse(json.result).trim())
-      }
-      return json.result
-    }
-
-    if (json.type === 'assistant') {
-      for (const content of json.message.content) {
-        if (content.type === 'text') {
-          log('🤖', marked.parse(content.text).trim())
-        } else if (content.type === 'tool_use') {
-          if (content.name === 'TodoWrite') {
-            logTodoWrite(content.input)
-          } else if (content.name === 'Task') {
-            logTaskTool(content.input)
-          } else if (content.name === 'Bash') {
-            logBashTool(content.input)
-          } else if (content.name === 'Read') {
-            logReadTool(content.input)
-          } else if (content.name === 'LS') {
-            logLsTool(content.input)
-          } else {
-            log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
-          }
-        } else {
-          if (debug) {
-            log('🔧', JSON.stringify(content), 'cyan')
-          }
-        }
-      }
-      return
-    }
-
-    if (json.type === 'user') {
-      for (const content of json.message.content) {
-        if (content.type === 'tool_result') {
-          const cleanedContent = cleanToolResult(content.content)
-          log('👤', debug ? cleanedContent : limitLinesWithMore(cleanedContent))
-        } else {
-          if (debug) {
-            log('🔧', JSON.stringify(content), 'cyan')
-          }
-        }
-      }
-      return
-    }
-
-    if (debug) {
+      return logResult(json)
+    } else if (json.type === 'assistant') {
+      return logAssistant(json, debug)
+    } else if (json.type === 'user') {
+      return logUser(json, debug)
+    } else if (debug) {
       log('🔧', JSON.stringify(json), 'cyan')
     }
   } catch (error) {
     log('❌', `Failed to parse line as JSON: ${error.message}`, 'red')
     log('❌', `Line: ${line}`, 'red')
+  }
+}
+
+function logResult (json) {
+  if (json.type === 'result') {
+    log('🤖', marked.parse(json.result).trim())
+  }
+  return json.result
+}
+
+function logAssistant (json, debug) {
+  for (const content of json.message.content) {
+    if (content.type === 'text') {
+      log('🤖', marked.parse(content.text).trim())
+    }
+
+    if (content.type === 'tool_use') {
+      if (content.name === 'TodoWrite') {
+        logTodoWrite(content.input)
+      } else if (content.name === 'Task') {
+        logTaskTool(content.input)
+      } else if (content.name === 'Bash') {
+        logBashTool(content.input)
+      } else if (content.name === 'Read') {
+        logReadTool(content.input)
+      } else if (content.name === 'LS') {
+        logLsTool(content.input)
+      } else {
+        log('🔧', chalk.cyan(content.name) + ' ' + JSON.stringify(content.input))
+      }
+    }
+
+    if (debug) {
+      log('🔧', JSON.stringify(content), 'cyan')
+    }
+  }
+}
+
+function logUser (json, debug) {
+  for (const content of json.message.content) {
+    if (content.type === 'tool_result') {
+      const cleanedContent = cleanToolResult(content.content)
+      log('👤', debug ? cleanedContent : limitLinesWithMore(cleanedContent))
+    } else {
+      if (debug) {
+        log('🔧', JSON.stringify(content), 'cyan')
+      }
+    }
   }
 }
 
@@ -164,7 +169,7 @@ function logTaskTool (input) {
   }
 
   log('🔧', `Task: ${chalk.cyan(input.description)}`, 'cyan')
-  
+
   // Format the prompt nicely with markdown
   const formattedPrompt = marked.parse(input.prompt).trim()
   console.log(chalk.dim('   Prompt:'))
