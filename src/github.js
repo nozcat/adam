@@ -62,9 +62,23 @@ async function ensureRepositoryExists (repoInfo) {
   }
 }
 
-/*
-async function checkBranchExists (branchName) {
+/**
+ * Checks if a Git branch exists in the specified repository.
+ * Searches both local and remote branches for the given branch name.
+ *
+ * @param {string} branchName - The name of the branch to check for existence
+ * @param {string} repoPath - The path to the repository directory
+ * @returns {Promise<boolean>} - True if the branch exists locally or remotely, false otherwise
+ *
+ * @example
+ * const exists = await checkBranchExists('feature/new-feature', './my-repo')
+ * if (exists) {
+ *   console.log('Branch exists')
+ * }
+ */
+async function checkBranchExists (branchName, repoPath) {
   try {
+    const git = simpleGit(repoPath)
     const branches = await git.branch(['--all'])
     return branches.all.some(branch =>
       branch.includes(branchName) || branch.includes(`origin/${branchName}`)
@@ -75,9 +89,28 @@ async function checkBranchExists (branchName) {
   }
 }
 
-async function createBranch (branchName) {
+/**
+ * Checks out an existing Git branch or creates a new one if it doesn't exist.
+ * If the branch exists, it switches to it. If not, it creates a new branch from
+ * the base branch (main by default) and switches to it.
+ *
+ * @param {string} branchName - The name of the branch to checkout or create
+ * @param {string} repoPath - The path to the repository directory
+ * @returns {Promise<boolean>} - True if the branch was successfully checked out or created, false otherwise
+ *
+ * @requires Environment variables:
+ * - BASE_BRANCH (optional): The base branch to create new branches from (defaults to 'main')
+ *
+ * @example
+ * const success = await checkoutBranch('feature/new-feature', './my-repo')
+ * if (success) {
+ *   console.log('Successfully switched to branch')
+ * }
+ */
+async function checkoutBranch (branchName, repoPath) {
   try {
-    const exists = await checkBranchExists(branchName)
+    const git = simpleGit(repoPath)
+    const exists = await checkBranchExists(branchName, repoPath)
     if (exists) {
       log('🌿', `Branch ${branchName} already exists, checking out...`, 'yellow')
       await git.checkout(branchName)
@@ -95,6 +128,7 @@ async function createBranch (branchName) {
   }
 }
 
+/*
 async function createPR (issue, branchName, repoInfo) {
   try {
     const owner = repoInfo?.owner || process.env.GITHUB_OWNER
@@ -254,7 +288,8 @@ async function checkPRApproval (prNumber, repoInfo) {
 */
 
 module.exports = {
-  ensureRepositoryExists
+  ensureRepositoryExists,
+  checkoutBranch
   /*
   checkBranchExists,
   createBranch,
