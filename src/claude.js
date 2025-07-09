@@ -1,16 +1,15 @@
 const { spawn } = require('child_process')
 const chalk = require('chalk')
 const { marked } = require('marked')
-const { log } = require('./util')
+const { log, DEBUG } = require('./util')
 
 /**
  * Executes Claude Code with the given prompt and returns the result
  * @param {string} prompt - The prompt to send to Claude Code
  * @param {string} dir - The directory to run Claude Code in
- * @param {boolean} debug - Whether to enable debug logging
  * @returns {Promise<string>} The result from a successful Claude Code run
  */
-async function callClaude (prompt, dir, debug) {
+async function callClaude (prompt, dir) {
   return new Promise((resolve, reject) => {
     log('🤖', 'Starting Claude Code...', 'blue')
     log('📝', `Prompt: ${prompt}`, 'yellow')
@@ -30,7 +29,7 @@ async function callClaude (prompt, dir, debug) {
       const lines = lineBuffer.split('\n')
       lineBuffer = lines.pop() || '' // Keep the last incomplete line in buffer
       for (const line of lines) {
-        result = result || logLine(line, debug)
+        result = result || logLine(line)
       }
     })
 
@@ -40,7 +39,7 @@ async function callClaude (prompt, dir, debug) {
     })
 
     claude.on('close', (code) => {
-      result = result || logLine(lineBuffer, debug)
+      result = result || logLine(lineBuffer)
 
       if (code === 0) {
         if (result.is_error) {
@@ -66,22 +65,21 @@ async function callClaude (prompt, dir, debug) {
 /**
  * Processes and logs a single line of NDJSON output from Claude Code
  * @param {string} line - The JSON line to process
- * @param {boolean} debug - Whether to enable debug logging
  * @returns {Object|undefined} The result object if this was a result line, which includes the result text and is_error flag
  */
-function logLine (line, debug) {
+function logLine (line) {
   if (line.trim() === '') return
 
   try {
     const json = JSON.parse(line)
 
     if (json.type === 'result') {
-      return logResult(json, debug)
+      return logResult(json)
     } else if (json.type === 'assistant') {
-      return logAssistant(json, debug)
+      return logAssistant(json)
     } else if (json.type === 'user') {
-      return logUser(json, debug)
-    } else if (debug) {
+      return logUser(json)
+    } else if (DEBUG) {
       log('🔧', JSON.stringify(json), 'cyan')
     }
   } catch (error) {
@@ -96,10 +94,10 @@ function logLine (line, debug) {
  * @param {string} json.result - The result text to display
  * @returns {string} The result text
  */
-function logResult (json, debug) {
+function logResult (json) {
   log('🤖', marked.parse(json.result).trim())
 
-  if (debug) {
+  if (DEBUG) {
     log('🔧', JSON.stringify(json), 'cyan')
   }
 
@@ -111,9 +109,8 @@ function logResult (json, debug) {
  * @param {Object} json - The parsed JSON assistant message
  * @param {Object} json.message - The message object
  * @param {Array} json.message.content - Array of content objects
- * @param {boolean} debug - Whether to enable debug logging
  */
-function logAssistant (json, debug) {
+function logAssistant (json) {
   for (const content of json.message.content) {
     if (content.type === 'text') {
       log('🤖', marked.parse(content.text).trim())
@@ -135,7 +132,7 @@ function logAssistant (json, debug) {
       }
     }
 
-    if (debug) {
+    if (DEBUG) {
       log('🔧', JSON.stringify(content), 'cyan')
     }
   }
@@ -193,15 +190,14 @@ function logTodoWrite (input) {
  * @param {Object} json - The parsed JSON user message
  * @param {Object} json.message - The message object
  * @param {Array} json.message.content - Array of content objects
- * @param {boolean} debug - Whether to enable debug logging
  */
-function logUser (json, debug) {
+function logUser (json) {
   for (const content of json.message.content) {
     if (content.type === 'tool_result') {
       const cleanedContent = cleanToolResult(content.content)
-      log('👤', debug ? cleanedContent : limitLinesWithMore(cleanedContent))
+      log('👤', DEBUG ? cleanedContent : limitLinesWithMore(cleanedContent))
     } else {
-      if (debug) {
+      if (DEBUG) {
         log('🔧', JSON.stringify(content), 'cyan')
       }
     }

@@ -5,8 +5,6 @@ const { log } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
-const DEBUG = process.env.DEBUG === 'true'
-
 /*
 async function monitorPRs (repoInfo) {
   try {
@@ -131,7 +129,7 @@ async function processIssue (issue) {
 
   // Call Claude to generate the code.
   const prompt = await generatePrompt(issue)
-  const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`, DEBUG)
+  const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`)
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
     return

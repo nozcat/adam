@@ -1,6 +1,10 @@
+require('dotenv').config()
+
 const chalk = require('chalk')
 const { marked } = require('marked')
 const { markedTerminal } = require('marked-terminal')
+
+const DEBUG = process.env.DEBUG === 'true'
 
 // Configure marked to use terminal renderer
 marked.use(markedTerminal())
@@ -20,4 +24,4 @@ function log (emoji, message, color) {
   console.log()
 }
 
-module.exports = { log }
+module.exports = { log, DEBUG }
