@@ -256,6 +256,77 @@ async function findExistingPR (issue, repoInfo) {
   }
 }
 
+/**
+ * Updates an existing pull request by merging main and calling Claude to handle merge conflicts
+ * @param {Object} issue - The issue object containing branch information
+ * @param {Object} repoInfo - Repository information
+ * @param {string} repoInfo.owner - The repository owner
+ * @param {string} repoInfo.name - The repository name
+ * @returns {Promise<boolean>} True if update was successful, false otherwise
+ */
+async function updateExistingPR (issue, repoInfo) {
+  try {
+    const repoPath = `./${repoInfo.name}`
+    const git = simpleGit(repoPath)
+    const baseBranch = process.env.BASE_BRANCH || 'main'
+
+    // Checkout the PR branch
+    await git.checkout(issue.branchName)
+    log('🌿', `Checked out branch: ${issue.branchName}`, 'blue')
+
+    // Pull latest changes from remote branch
+    await git.pull('origin', issue.branchName)
+    log('📥', `Pulled latest changes for branch: ${issue.branchName}`, 'blue')
+
+    // Check if branch is behind main
+    await git.fetch()
+
+    const aheadCommits = await git.log([`HEAD..${baseBranch}`])
+
+    if (aheadCommits.all.length > 0) {
+      log('🔄', `Branch ${issue.branchName} is behind ${baseBranch}, merging...`, 'yellow')
+
+      // Call Claude to handle the merge
+      const mergePrompt = `
+        The branch ${issue.branchName} is behind ${baseBranch} and needs to be updated.
+        Please merge ${baseBranch} into the current branch and resolve any conflicts.
+        
+        Original issue context:
+        ${issue.identifier}: ${issue.title}
+        ${issue.description}
+        
+        Complete the merge and commit the changes.
+      `
+
+      const claudeSuccess = await callClaude(mergePrompt, repoPath, false)
+      if (!claudeSuccess) {
+        log('❌', `Claude failed to merge ${baseBranch} into ${issue.branchName}`, 'red')
+        return false
+      }
+
+      // Verify the merge was completed
+      const postMergeStatus = await git.status()
+      if (postMergeStatus.conflicted.length > 0) {
+        log('❌', 'Merge conflicts still exist after Claude processing', 'red')
+        return false
+      }
+
+      // Push the updated branch
+      await git.push('origin', issue.branchName)
+      log('📤', `Pushed updated branch ${issue.branchName} to remote`, 'green')
+
+      log('✅', `Successfully updated PR for ${issue.identifier}`, 'green')
+      return true
+    } else {
+      log('✅', `Branch ${issue.branchName} is up to date with ${baseBranch}`, 'green')
+      return true
+    }
+  } catch (error) {
+    log('❌', `Failed to update existing PR: ${error.message}`, 'red')
+    return false
+  }
+}
+
 /*
 
 async function handlePRFeedback (prNumber, branchName, repoInfo) {
@@ -365,5 +436,6 @@ module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
   createPR,
-  findExistingPR
+  findExistingPR,
+  updateExistingPR
 }

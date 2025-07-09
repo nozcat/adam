@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 const DEBUG = process.env.DEBUG === 'true'
@@ -204,6 +204,12 @@ async function processIssue (issue) {
   const existingPR = await findExistingPR(issue, issue.repository)
   if (existingPR) {
     log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
+
+    // Update the existing PR by merging main
+    const updateSuccess = await updateExistingPR(issue, issue.repository)
+    if (!updateSuccess) {
+      log('❌', `Failed to update existing PR for issue ${issue.identifier}`, 'red')
+    }
     return
   }
 
