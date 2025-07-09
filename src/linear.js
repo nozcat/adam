@@ -60,7 +60,7 @@ async function getRepositoryFromIssue (issue) {
     const project = await issue.project
     const repository = extractRepository(project.content)
     return repository
-  } catch (error) { 
+  } catch (error) {
     log('⚠️', `Error getting repository from issue ${issue.identifier}: ${error.message}`, 'yellow')
     return null
   }

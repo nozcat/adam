@@ -144,7 +144,7 @@ async function main () {
     }
 
     const elapsed = Date.now() - start
-    const remaining = 30000 - elapsed 
+    const remaining = 30000 - elapsed
 
     if (remaining > 0) {
       await new Promise(resolve => setTimeout(resolve, remaining))
@@ -199,7 +199,6 @@ async function processIssue (issue) {
     await ensureRepositoryExists(issue.repository)
   } catch (error) {
     log('❌', `Failed to ensure repository exists for issue ${issue.identifier}: ${error.message}`, 'red')
-    return
   }
 }
 

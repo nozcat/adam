@@ -7,17 +7,17 @@ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 /**
  * Ensures a GitHub repository exists locally by cloning it if not present.
  * Authenticates using GitHub token and configures git user credentials for commits.
- * 
+ *
  * @param {Object} repoInfo - Repository information object
  * @param {string} repoInfo.name - Repository name
  * @param {string} repoInfo.owner - Repository owner/organization
  * @returns {Promise<boolean>} - True if repository exists/was cloned successfully, false otherwise
- * 
+ *
  * @requires Environment variables:
  * - GITHUB_TOKEN: GitHub personal access token with repo scope
  * - GITHUB_USERNAME: GitHub username for commit attribution
  * - GITHUB_EMAIL: Email address for commit attribution
- * 
+ *
  * @example
  * const success = await ensureRepositoryExists({
  *   name: 'my-repo',
@@ -46,14 +46,14 @@ async function ensureRepositoryExists (repoInfo) {
 
     const repoUrl = `https://${token}@github.com/${repoInfo.owner}/${repoInfo.name}.git`
     log('📥', `Cloning repository ${repoInfo.owner}/${repoInfo.name}...`, 'blue')
-    
+
     const git = simpleGit()
     await git.clone(repoUrl, repoPath)
-    
+
     const repoGit = simpleGit(repoPath)
     await repoGit.addConfig('user.name', username)
     await repoGit.addConfig('user.email', email)
-    
+
     log('✅', `Successfully cloned repository to ${repoPath} and configured user credentials`, 'green')
     return true
   } catch (error) {
@@ -254,7 +254,7 @@ async function checkPRApproval (prNumber, repoInfo) {
 */
 
 module.exports = {
-  ensureRepositoryExists,
+  ensureRepositoryExists
   /*
   checkBranchExists,
   createBranch,
