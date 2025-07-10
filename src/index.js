@@ -170,6 +170,14 @@ async function processExistingPR (existingPR, issue) {
 
             if (comment) {
               log('💬', `Successfully posted Claude response for thread ${i + 1} as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
+
+              // Push the branch to remote after making changes
+              const pushSuccess = await pushBranch(issue.branchName, issue.repository)
+              if (pushSuccess) {
+                log('📤', `Successfully pushed changes to remote branch after thread ${i + 1}`, 'green')
+              } else {
+                log('❌', `Failed to push changes to remote branch after thread ${i + 1}`, 'red')
+              }
             } else {
               log('❌', `Failed to post Claude response for thread ${i + 1} to GitHub PR`, 'red')
             }
@@ -185,15 +193,6 @@ async function processExistingPR (existingPR, issue) {
           log('⏳', 'Waiting before processing next thread...', 'blue')
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
-      }
-
-      // Push the branch to remote after processing all threads
-      log('📤', 'Pushing changes to remote after processing all threads...', 'blue')
-      const pushSuccess = await pushBranch(issue.branchName, issue.repository)
-      if (pushSuccess) {
-        log('📤', 'Successfully pushed all changes to remote branch', 'green')
-      } else {
-        log('❌', 'Failed to push changes to remote branch', 'red')
       }
     }
   }
