@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /**
@@ -145,11 +145,23 @@ async function processExistingPR (existingPR, issue) {
         if (claudeResponse) {
           log('✅', 'Successfully processed conversation thread with Claude', 'green')
 
-          // Post Claude's response back to the GitHub PR
-          const comment = await postPRComment(existingPR.number, claudeResponse, issue.repository)
+          // Determine how to reply based on the last comment in the thread
+          const lastComment = firstThread[firstThread.length - 1]
+          let comment
+
+          if (lastComment.type === 'review') {
+            // Reply directly to the review comment
+            comment = await postReviewCommentReply(existingPR.number, lastComment.id, claudeResponse, issue.repository)
+          } else {
+            // Quote the issue comment and post a new comment
+            comment = await postPRComment(existingPR.number, claudeResponse, issue.repository, {
+              user: lastComment.user,
+              body: lastComment.body
+            })
+          }
 
           if (comment) {
-            log('💬', 'Successfully posted Claude response to GitHub PR', 'green')
+            log('💬', `Successfully posted Claude response as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
           } else {
             log('❌', 'Failed to post Claude response to GitHub PR', 'red')
           }
