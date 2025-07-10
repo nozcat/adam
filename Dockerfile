@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     less \
     grep \
     sed \
-    awk \
+    gawk \
     make \
     gcc \
     g++ \
@@ -38,6 +38,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
 
 # Verify Node.js installation
 RUN node --version && npm --version
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
