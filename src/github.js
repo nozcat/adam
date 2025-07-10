@@ -456,6 +456,53 @@ async function updateExistingPR (issue, repoInfo) {
   }
 }
 
+/**
+ * Posts a reply comment to a GitHub pull request.
+ *
+ * @param {number} prNumber - The pull request number
+ * @param {string} body - The comment body text
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.owner - Repository owner/organization
+ * @param {string} repoInfo.name - Repository name
+ * @returns {Promise<Object|null>} - The created comment object, or null if failed
+ *
+ * @requires Environment variables:
+ * - GITHUB_TOKEN: GitHub personal access token with repo scope
+ *
+ * @example
+ * const comment = await postPRComment(123, 'Thanks for the feedback!', {
+ *   owner: 'username',
+ *   name: 'repo-name'
+ * })
+ */
+async function postPRComment (prNumber, body, repoInfo) {
+  log('💬', `Posting comment to PR #${prNumber}`, 'blue')
+
+  try {
+    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
+    const repo = repoInfo?.name || process.env.GITHUB_REPO
+
+    if (!owner || !repo) {
+      log('❌', 'Repository owner and name are required', 'red')
+      return null
+    }
+
+    // Post the comment to the PR
+    const { data: comment } = await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: prNumber,
+      body
+    })
+
+    log('✅', `Successfully posted comment to PR #${prNumber}`, 'green')
+    return comment
+  } catch (error) {
+    log('❌', `Failed to post comment to PR #${prNumber}: ${error.message}`, 'red')
+    return null
+  }
+}
+
 module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
@@ -463,5 +510,6 @@ module.exports = {
   findExistingPR,
   updateExistingPR,
   getPRComments,
-  getDetailedReactions
+  getDetailedReactions,
+  postPRComment
 }

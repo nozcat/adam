@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /**
@@ -138,12 +138,26 @@ async function processExistingPR (existingPR, issue) {
       const prompt = generateThreadPrompt(firstThread)
 
       log('🤖', 'Running Claude to process conversation thread...', 'blue')
-      const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`)
 
-      if (claudeSuccess) {
-        log('✅', 'Successfully processed conversation thread with Claude', 'green')
-      } else {
-        log('❌', 'Failed to process conversation thread with Claude', 'red')
+      try {
+        const claudeResponse = await callClaude(prompt, `./${issue.repository.name}`)
+
+        if (claudeResponse) {
+          log('✅', 'Successfully processed conversation thread with Claude', 'green')
+
+          // Post Claude's response back to the GitHub PR
+          const comment = await postPRComment(existingPR.number, claudeResponse, issue.repository)
+
+          if (comment) {
+            log('💬', 'Successfully posted Claude response to GitHub PR', 'green')
+          } else {
+            log('❌', 'Failed to post Claude response to GitHub PR', 'red')
+          }
+        } else {
+          log('❌', 'Claude returned empty response', 'red')
+        }
+      } catch (error) {
+        log('❌', `Failed to process conversation thread: ${error.message}`, 'red')
       }
     }
   }
@@ -269,7 +283,7 @@ INSTRUCTIONS:
    - Or why no changes were necessary
    - Any additional context that would be helpful
 
-Your response should be suitable as a reply to the conversation thread.`
+Your response should be suitable as a reply to the conversation thread. It should be friendly, consise, professional, and upbeat.`
 }
 
 /**
