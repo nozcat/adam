@@ -170,16 +170,19 @@ async function checkoutBranch (branchName, repoPath) {
  *
  * @requires Environment variables:
  * - GITHUB_TOKEN: GitHub personal access token with repo scope
- * - GITHUB_OWNER: Default repository owner (optional if provided in repoInfo)
- * - GITHUB_REPO: Default repository name (optional if provided in repoInfo)
  * - BASE_BRANCH: The base branch for PRs (defaults to 'main')
  */
 async function createPR (issue, branchName, repoInfo) {
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
+    if (!repoInfo?.owner || !repoInfo?.name) {
+      log('❌', 'Repository owner and name are required', 'red')
+      return null
+    }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
     const baseBranch = process.env.BASE_BRANCH || 'main'
-    const repoPath = `./${repoInfo?.name || process.env.GITHUB_REPO}`
+    const repoPath = `./${repoInfo.name}`
 
     // Push the branch to remote before creating PR
     const git = simpleGit(repoPath)
@@ -263,8 +266,13 @@ ${issue.description}`
  */
 async function findExistingPR (issue, repoInfo) {
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
+    if (!repoInfo?.owner || !repoInfo?.name) {
+      log('❌', 'Repository owner and name are required', 'red')
+      return null
+    }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
 
     const { data: pulls } = await octokit.rest.pulls.list({
       owner,
@@ -307,13 +315,13 @@ async function getPRComments (prNumber, repoInfo) {
   log('🔍', `Getting comments for PR #${prNumber}`, 'blue')
 
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
-
-    if (!owner || !repo) {
+    if (!repoInfo?.owner || !repoInfo?.name) {
       log('❌', 'Repository owner and name are required', 'red')
       return null
     }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
 
     // Get line-specific review comments
     const { data: reviewComments } = await octokit.rest.pulls.listReviewComments({
@@ -506,13 +514,13 @@ async function postReviewCommentReply (prNumber, inReplyToId, body, repoInfo) {
   log('💬', `Posting review comment reply to PR #${prNumber}`, 'blue')
 
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
-
-    if (!owner || !repo) {
+    if (!repoInfo?.owner || !repoInfo?.name) {
       log('❌', 'Repository owner and name are required', 'red')
       return null
     }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
 
     // Post the reply to the review comment
     const { data: comment } = await octokit.rest.pulls.createReplyForReviewComment({
@@ -557,13 +565,13 @@ async function postPRComment (prNumber, body, repoInfo, quotedComment = null) {
   log('💬', `Posting comment to PR #${prNumber}`, 'blue')
 
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
-
-    if (!owner || !repo) {
+    if (!repoInfo?.owner || !repoInfo?.name) {
       log('❌', 'Repository owner and name are required', 'red')
       return null
     }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
 
     let finalBody = body
 
@@ -617,13 +625,13 @@ async function addCommentReaction (commentId, commentType, reaction, repoInfo) {
   log('👁️', `Adding ${reaction} reaction to ${commentType} comment ${commentId}`, 'blue')
 
   try {
-    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
-    const repo = repoInfo?.name || process.env.GITHUB_REPO
-
-    if (!owner || !repo) {
+    if (!repoInfo?.owner || !repoInfo?.name) {
       log('❌', 'Repository owner and name are required', 'red')
       return false
     }
+
+    const owner = repoInfo.owner
+    const repo = repoInfo.name
 
     if (commentType === 'review') {
       // Add reaction to review comment
