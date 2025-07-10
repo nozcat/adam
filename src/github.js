@@ -115,9 +115,21 @@ async function checkoutBranch (branchName, repoPath) {
     if (exists) {
       log('🌿', `Branch ${branchName} already exists, checking out...`, 'yellow')
       await git.checkout(branchName)
+
+      // Pull latest changes from remote branch
+      log('📥', `Pulling latest changes for branch: ${branchName}`, 'blue')
+      try {
+        await git.pull('origin', branchName)
+        log('✅', `Successfully pulled latest changes for branch: ${branchName}`, 'green')
+      } catch (pullError) {
+        log('⚠️', `Could not pull from remote branch ${branchName}: ${pullError.message}`, 'yellow')
+        log('ℹ️', 'This might be expected if the branch only exists locally', 'blue')
+      }
+
       return true
     }
 
+    // Create new branch from base branch
     await git.checkout(process.env.BASE_BRANCH || 'main')
     await git.pull()
     await git.checkoutLocalBranch(branchName)
