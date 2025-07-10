@@ -91,6 +91,37 @@ async function checkBranchExists (branchName, repoPath) {
 }
 
 /**
+ * Deletes a local Git branch.
+ *
+ * @param {string} branchName - The name of the branch to delete
+ * @param {string} repoPath - The path to the repository directory
+ * @returns {Promise<boolean>} - True if the branch was successfully deleted, false otherwise
+ *
+ * @example
+ * const success = await deleteLocalBranch('feature/old-feature', './my-repo')
+ * if (success) {
+ *   console.log('Branch deleted successfully')
+ * }
+ */
+async function deleteLocalBranch (branchName, repoPath) {
+  try {
+    const git = simpleGit(repoPath)
+
+    // Switch to main/base branch before deleting
+    const baseBranch = process.env.BASE_BRANCH || 'main'
+    await git.checkout(baseBranch)
+
+    // Delete the local branch
+    await git.deleteLocalBranch(branchName)
+    log('🗑️', `Successfully deleted local branch: ${branchName}`, 'green')
+    return true
+  } catch (error) {
+    log('❌', `Failed to delete local branch ${branchName}: ${error.message}`, 'red')
+    return false
+  }
+}
+
+/**
  * Checks out an existing Git branch or creates a new one if it doesn't exist.
  * If the branch exists, it switches to it. If not, it creates a new branch from
  * the base branch (main by default) and switches to it.
@@ -126,8 +157,19 @@ async function checkoutBranch (branchName, repoPath) {
         await git.reset(['--hard', `origin/${branchName}`])
         log('✅', `Successfully reset to remote branch: origin/${branchName}`, 'green')
       } catch (resetError) {
-        log('⚠️', `Could not reset to remote branch ${branchName}: ${resetError.message}`, 'yellow')
-        log('ℹ️', 'This might be expected if the branch only exists locally', 'blue')
+        // Check if the error is because the remote branch doesn't exist
+        if (resetError.message.includes("couldn't find remote ref") ||
+            resetError.message.includes('does not exist')) {
+          log('🗑️', `Remote branch ${branchName} was deleted, removing local branch`, 'yellow')
+          const deleteSuccess = await deleteLocalBranch(branchName, repoPath)
+          if (deleteSuccess) {
+            log('✅', `Successfully cleaned up orphaned local branch: ${branchName}`, 'green')
+          }
+          return false // Return false to indicate branch checkout failed
+        } else {
+          log('⚠️', `Could not reset to remote branch ${branchName}: ${resetError.message}`, 'yellow')
+          log('ℹ️', 'This might be expected if the branch only exists locally', 'blue')
+        }
       }
 
       return true
@@ -683,5 +725,6 @@ module.exports = {
   postPRComment,
   postReviewCommentReply,
   addCommentReaction,
-  pushBranch
+  pushBranch,
+  deleteLocalBranch
 }
