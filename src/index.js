@@ -90,20 +90,7 @@ async function processIssue (issue) {
   // Check if the PR already exists.
   const existingPR = await findExistingPR(issue, issue.repository)
   if (existingPR) {
-    log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
-
-    // Update the existing PR by merging main
-    const updateSuccess = await updateExistingPR(issue, issue.repository)
-    if (!updateSuccess) {
-      log('❌', `Failed to update existing PR for issue ${issue.identifier}`, 'red')
-    }
-
-    // Get the comments on the PR.
-    const comments = await getPRComments(existingPR.number, issue.repository)
-    if (comments) {
-      console.log(comments)
-    }
-
+    await processExistingPR(existingPR, issue)
     return
   }
 
@@ -121,6 +108,28 @@ async function processIssue (issue) {
     log('🎉', `Successfully created PR for issue: ${issue.identifier}`, 'green')
   } else {
     log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
+  }
+}
+
+/**
+ * Process an existing PR by updating it and retrieving comments.
+ *
+ * @param {Object} existingPR - The existing PR object.
+ * @param {Object} issue - The issue object.
+ */
+async function processExistingPR (existingPR, issue) {
+  log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
+
+  // Update the existing PR by merging main
+  const updateSuccess = await updateExistingPR(issue, issue.repository)
+  if (!updateSuccess) {
+    log('❌', `Failed to update existing PR for issue ${issue.identifier}`, 'red')
+  }
+
+  // Get the comments on the PR.
+  const comments = await getPRComments(existingPR.number, issue.repository)
+  if (comments) {
+    console.log(comments)
   }
 }
 
