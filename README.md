@@ -16,7 +16,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
 
 ### Requirements
 
-- **Node.js 18+** (latest LTS recommended)
+- **Node.js 24+** (latest LTS recommended)
 - **Linear API access** - API key with read access to your Linear workspace
 - **GitHub access** - Personal access token with repo permissions
 - **Claude Code** - Adam uses Claude Code to implement changes
@@ -30,7 +30,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
 
 2. **Configure environment variables**
    
-   Create a `.env` file with the following variables:
+   Copy the `.env.example` file to `.env` and configure the following variables:
    ```env
    # Required
    LINEAR_API_KEY=your_linear_api_key
@@ -38,9 +38,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
    GITHUB_USERNAME=your_github_username
    GITHUB_EMAIL=your_github_email
 
-   # Optional (can be set per repository in Linear project)
-   GITHUB_OWNER=default_repo_owner
-   GITHUB_REPO=default_repo_name
+   # Optional
    BASE_BRANCH=main
    DEBUG=false
    ```
