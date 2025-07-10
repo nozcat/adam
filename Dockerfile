@@ -45,16 +45,6 @@ RUN npm install -g @anthropic-ai/claude-code
 # Set working directory
 WORKDIR /app
 
-# Clone the Adam repository
-RUN git clone https://github.com/nozcat/noz.git . \
-    && cd agents/adam/adam
-
-# Set working directory to Adam
-WORKDIR /app/agents/adam/adam
-
-# Install dependencies
-RUN npm install
-
 # Create a directory for environment configuration
 RUN mkdir -p /app/config
 
@@ -69,7 +59,7 @@ COPY . .
 RUN echo '#!/bin/bash\n\
 # Check if .env file exists in mounted volume\n\
 if [ -f /app/config/.env ]; then\n\
-    cp /app/config/.env /app/agents/adam/adam/.env\n\
+    cp /app/config/.env /app/.env\n\
     echo "Environment file copied from mounted volume"\n\
 else\n\
     echo "No .env file found in /app/config/. Please mount your .env file to /app/config/.env"\n\
