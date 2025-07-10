@@ -426,9 +426,10 @@ async function updateExistingPR (issue, repoInfo) {
     // Check if branch is behind main
     await git.fetch()
 
-    // Get commits that are in baseBranch but not in current branch (HEAD)
+    // Get commits that are in origin/baseBranch but not in current branch (HEAD)
     // This tells us if the current branch is behind the base branch
-    const behindCommits = await git.log([`HEAD..${baseBranch}`])
+    // We use origin/baseBranch to ensure we're comparing against the latest remote commits
+    const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
 
     if (behindCommits.all.length > 0) {
       log('🔄', `Branch ${issue.branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging...`, 'yellow')
@@ -436,13 +437,13 @@ async function updateExistingPR (issue, repoInfo) {
       // Call Claude to handle the merge
       const mergePrompt = `
         The branch ${issue.branchName} is behind ${baseBranch} and needs to be updated.
-        Please merge ${baseBranch} into the current branch and resolve any conflicts.
+        Please merge origin/${baseBranch} into the current branch and resolve any conflicts.
         
         IMPORTANT: Preserve the original goal of this PR while merging:
         ${issue.identifier}: ${issue.title}
         ${issue.description}
         
-        Make sure none of the changes being merged in from ${baseBranch} conflict with or affect the original goal of this PR.
+        Make sure none of the changes being merged in from origin/${baseBranch} conflict with or affect the original goal of this PR.
         If there are conflicts, resolve them in favor of preserving the original PR functionality.
         
         Complete the merge and commit the changes.
