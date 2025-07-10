@@ -131,12 +131,20 @@ async function processExistingPR (existingPR, issue) {
   if (comments) {
     const conversationThreads = filterRelevantComments(comments)
     if (conversationThreads.length > 0) {
-      const prompts = conversationThreads.map(thread => generateThreadPrompt(thread))
-      prompts.forEach((prompt, index) => {
-        console.log(`\n=== PROMPT ${index + 1} ===`)
-        console.log(prompt)
-        console.log('=== END PROMPT ===\n')
-      })
+      log('💬', `Found ${conversationThreads.length} conversation thread(s) to process`, 'blue')
+
+      // Process only the first thread
+      const firstThread = conversationThreads[0]
+      const prompt = generateThreadPrompt(firstThread)
+
+      log('🤖', 'Running Claude to process conversation thread...', 'blue')
+      const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`)
+
+      if (claudeSuccess) {
+        log('✅', 'Successfully processed conversation thread with Claude', 'green')
+      } else {
+        log('❌', 'Failed to process conversation thread with Claude', 'red')
+      }
     }
   }
 }
