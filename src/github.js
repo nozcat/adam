@@ -567,6 +567,64 @@ async function postPRComment (prNumber, body, repoInfo, quotedComment = null) {
   }
 }
 
+/**
+ * Adds a reaction to a GitHub comment.
+ *
+ * @param {number} commentId - The comment ID to react to
+ * @param {string} commentType - Either 'review' or 'issue'
+ * @param {string} reaction - The reaction emoji (e.g., 'eyes', '+1', '-1', 'laugh', 'hooray', 'confused', 'heart', 'rocket')
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.owner - Repository owner/organization
+ * @param {string} repoInfo.name - Repository name
+ * @returns {Promise<boolean>} - True if reaction was added successfully, false otherwise
+ *
+ * @requires Environment variables:
+ * - GITHUB_TOKEN: GitHub personal access token with repo scope
+ *
+ * @example
+ * const success = await addCommentReaction(123, 'review', 'eyes', {
+ *   owner: 'username',
+ *   name: 'repo-name'
+ * })
+ */
+async function addCommentReaction (commentId, commentType, reaction, repoInfo) {
+  log('👁️', `Adding ${reaction} reaction to ${commentType} comment ${commentId}`, 'blue')
+
+  try {
+    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
+    const repo = repoInfo?.name || process.env.GITHUB_REPO
+
+    if (!owner || !repo) {
+      log('❌', 'Repository owner and name are required', 'red')
+      return false
+    }
+
+    if (commentType === 'review') {
+      // Add reaction to review comment
+      await octokit.rest.reactions.createForPullRequestReviewComment({
+        owner,
+        repo,
+        comment_id: commentId,
+        content: reaction
+      })
+    } else {
+      // Add reaction to issue comment
+      await octokit.rest.reactions.createForIssueComment({
+        owner,
+        repo,
+        comment_id: commentId,
+        content: reaction
+      })
+    }
+
+    log('✅', `Successfully added ${reaction} reaction to ${commentType} comment ${commentId}`, 'green')
+    return true
+  } catch (error) {
+    log('❌', `Failed to add reaction to ${commentType} comment ${commentId}: ${error.message}`, 'red')
+    return false
+  }
+}
+
 module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
@@ -576,5 +634,6 @@ module.exports = {
   getPRComments,
   getDetailedReactions,
   postPRComment,
-  postReviewCommentReply
+  postReviewCommentReply,
+  addCommentReaction
 }

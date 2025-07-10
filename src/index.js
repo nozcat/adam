@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /**
@@ -135,6 +135,12 @@ async function processExistingPR (existingPR, issue) {
 
       // Process only the first thread
       const firstThread = conversationThreads[0]
+      const lastComment = firstThread[firstThread.length - 1]
+
+      // Add eyes reaction to indicate we're processing this comment
+      log('👁️', 'Adding eyes reaction to indicate processing...', 'blue')
+      await addCommentReaction(lastComment.id, lastComment.type, 'eyes', issue.repository)
+
       const prompt = generateThreadPrompt(firstThread)
 
       log('🤖', 'Running Claude to process conversation thread...', 'blue')
@@ -178,11 +184,14 @@ async function processExistingPR (existingPR, issue) {
 /**
  * Filters comments to find comments written by nozcat or with +1 reactions by nozcat
  * that are the last reply in their thread, and builds conversation threads for each.
+ * Excludes comments that already have eyes reactions from our user to prevent double processing.
  *
  * @param {Array} comments - Array of comment objects from getPRComments.
  * @returns {Array} Array of conversation threads, each thread being an array of comments from root to leaf.
  */
 function filterRelevantComments (comments) {
+  const ourUsername = process.env.GITHUB_USERNAME
+
   const relevantComments = comments.filter(comment => {
     // Check if comment is written by nozcat or has +1 reaction by nozcat
     const isRelevantComment = comment.user === 'nozcat' ||
@@ -190,6 +199,13 @@ function filterRelevantComments (comments) {
        comment.reactions['+1'].some(reaction => reaction.user === 'nozcat'))
 
     if (!isRelevantComment) {
+      return false
+    }
+
+    // Skip if this comment already has eyes reaction from our user (already processed)
+    if (comment.reactions && comment.reactions.eyes &&
+        comment.reactions.eyes.some(reaction => reaction.user === ourUsername)) {
+      log('👁️', `Skipping comment ${comment.id} - already has eyes reaction from ${ourUsername}`, 'yellow')
       return false
     }
 
