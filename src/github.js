@@ -253,6 +253,7 @@ ${issue.description}`
 
 /**
  * Finds an existing pull request for the given issue's branch
+ *
  * @param {Object} issue - The issue object containing branch information
  * @param {string} issue.branchName - The name of the branch to search for
  * @param {Object} repoInfo - Repository information
@@ -269,7 +270,7 @@ async function findExistingPR (issue, repoInfo) {
       owner,
       repo,
       head: `${owner}:${issue.branchName}`,
-      state: 'all'
+      state: 'open'
     })
 
     const existingPR = pulls.length > 0 ? pulls[0] : null
