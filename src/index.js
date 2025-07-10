@@ -133,57 +133,67 @@ async function processExistingPR (existingPR, issue) {
     if (conversationThreads.length > 0) {
       log('💬', `Found ${conversationThreads.length} conversation thread(s) to process`, 'blue')
 
-      // Process only the first thread
-      const firstThread = conversationThreads[0]
-      const lastComment = firstThread[firstThread.length - 1]
+      // Process all conversation threads
+      for (let i = 0; i < conversationThreads.length; i++) {
+        const thread = conversationThreads[i]
+        const lastComment = thread[thread.length - 1]
 
-      // Add eyes reaction to indicate we're processing this comment
-      log('👁️', 'Adding eyes reaction to indicate processing...', 'blue')
-      await addCommentReaction(lastComment.id, lastComment.type, 'eyes', issue.repository)
+        log('🔄', `Processing thread ${i + 1}/${conversationThreads.length}`, 'blue')
 
-      const prompt = generateThreadPrompt(firstThread)
+        // Add eyes reaction to indicate we're processing this comment
+        log('👁️', 'Adding eyes reaction to indicate processing...', 'blue')
+        await addCommentReaction(lastComment.id, lastComment.type, 'eyes', issue.repository)
 
-      log('🤖', 'Running Claude to process conversation thread...', 'blue')
+        const prompt = generateThreadPrompt(thread)
 
-      try {
-        const claudeResponse = await callClaude(prompt, `./${issue.repository.name}`)
+        log('🤖', `Running Claude to process conversation thread ${i + 1}...`, 'blue')
 
-        if (claudeResponse) {
-          log('✅', 'Successfully processed conversation thread with Claude', 'green')
+        try {
+          const claudeResponse = await callClaude(prompt, `./${issue.repository.name}`)
 
-          // Determine how to reply based on the last comment in the thread
-          const lastComment = firstThread[firstThread.length - 1]
-          let comment
+          if (claudeResponse) {
+            log('✅', `Successfully processed conversation thread ${i + 1} with Claude`, 'green')
 
-          if (lastComment.type === 'review') {
-            // Reply directly to the review comment
-            comment = await postReviewCommentReply(existingPR.number, lastComment.id, claudeResponse, issue.repository)
-          } else {
-            // Quote the issue comment and post a new comment
-            comment = await postPRComment(existingPR.number, claudeResponse, issue.repository, {
-              user: lastComment.user,
-              body: lastComment.body
-            })
-          }
+            // Determine how to reply based on the last comment in the thread
+            let comment
 
-          if (comment) {
-            log('💬', `Successfully posted Claude response as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
-
-            // Push the branch to remote after making changes
-            const pushSuccess = await pushBranch(issue.branchName, issue.repository)
-            if (pushSuccess) {
-              log('📤', 'Successfully pushed changes to remote branch', 'green')
+            if (lastComment.type === 'review') {
+              // Reply directly to the review comment
+              comment = await postReviewCommentReply(existingPR.number, lastComment.id, claudeResponse, issue.repository)
             } else {
-              log('❌', 'Failed to push changes to remote branch', 'red')
+              // Quote the issue comment and post a new comment
+              comment = await postPRComment(existingPR.number, claudeResponse, issue.repository, {
+                user: lastComment.user,
+                body: lastComment.body
+              })
+            }
+
+            if (comment) {
+              log('💬', `Successfully posted Claude response for thread ${i + 1} as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
+            } else {
+              log('❌', `Failed to post Claude response for thread ${i + 1} to GitHub PR`, 'red')
             }
           } else {
-            log('❌', 'Failed to post Claude response to GitHub PR', 'red')
+            log('❌', `Claude returned empty response for thread ${i + 1}`, 'red')
           }
-        } else {
-          log('❌', 'Claude returned empty response', 'red')
+        } catch (error) {
+          log('❌', `Failed to process conversation thread ${i + 1}: ${error.message}`, 'red')
         }
-      } catch (error) {
-        log('❌', `Failed to process conversation thread: ${error.message}`, 'red')
+
+        // Add a small delay between processing threads to avoid overwhelming the system
+        if (i < conversationThreads.length - 1) {
+          log('⏳', 'Waiting before processing next thread...', 'blue')
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+      }
+
+      // Push the branch to remote after processing all threads
+      log('📤', 'Pushing changes to remote after processing all threads...', 'blue')
+      const pushSuccess = await pushBranch(issue.branchName, issue.repository)
+      if (pushSuccess) {
+        log('📤', 'Successfully pushed all changes to remote branch', 'green')
+      } else {
+        log('❌', 'Failed to push changes to remote branch', 'red')
       }
     }
   }
