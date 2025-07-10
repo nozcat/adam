@@ -74,9 +74,9 @@ if [ -f /app/config/.env ]; then\n\
     cp /app/config/.env /app/.env\n\
     echo "Environment file copied from mounted volume"\n\
 else\n\
-    echo "No .env file found in /app/config/. Please mount your .env file to /app/config/.env"\n\
+    echo "No .env file found in /app/config/. Using environment variables from Docker Compose or system."\n\
+    echo "If you need to use a .env file, mount it to /app/config/.env"\n\
     echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
-    exit 1\n\
 fi\n\
 \n\
 # Start the application\n\
