@@ -257,6 +257,135 @@ async function findExistingPR (issue, repoInfo) {
 }
 
 /**
+ * Gets all comments on a pull request (both line-specific and issue comments).
+ *
+ * @param {number} prNumber - The pull request number
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.owner - Repository owner/organization
+ * @param {string} repoInfo.name - Repository name
+ * @returns {Promise<Array|null>} - Array of comment objects, or null if failed
+ *
+ * @requires Environment variables:
+ * - GITHUB_TOKEN: GitHub personal access token with repo scope
+ *
+ * @example
+ * const comments = await getPRComments(123, {
+ *   owner: 'username',
+ *   name: 'repo-name'
+ * })
+ * if (comments) {
+ *   console.log(`Found ${comments.length} PR comments`)
+ * }
+ */
+async function getPRComments (prNumber, repoInfo) {
+  log('🔍', `Getting comments for PR #${prNumber}`, 'blue')
+
+  try {
+    const owner = repoInfo?.owner || process.env.GITHUB_OWNER
+    const repo = repoInfo?.name || process.env.GITHUB_REPO
+
+    if (!owner || !repo) {
+      log('❌', 'Repository owner and name are required', 'red')
+      return null
+    }
+
+    // Get line-specific review comments
+    const { data: reviewComments } = await octokit.rest.pulls.listReviewComments({
+      owner,
+      repo,
+      pull_number: prNumber
+    })
+
+    // Get general issue PR comments (non-line-specific)
+    const { data: issueComments } = await octokit.rest.issues.listComments({
+      owner,
+      repo,
+      issue_number: prNumber
+    })
+
+    const formattedReviewComments = await Promise.all(reviewComments.map(async comment => ({
+      id: comment.id,
+      type: 'review',
+      user: comment.user.login,
+      body: comment.body,
+      path: comment.path,
+      line: comment.line,
+      diff_hunk: comment.diff_hunk,
+      in_reply_to_id: comment.in_reply_to_id || null,
+      reactions: await getDetailedReactions(comment.id, 'review', owner, repo),
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      html_url: comment.html_url
+    })))
+
+    const formattedIssueComments = await Promise.all(issueComments.map(async comment => ({
+      id: comment.id,
+      type: 'issue',
+      user: comment.user.login,
+      body: comment.body,
+      path: null,
+      line: null,
+      diff_hunk: null,
+      in_reply_to_id: null,
+      reactions: await getDetailedReactions(comment.id, 'issue', owner, repo),
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      html_url: comment.html_url
+    })))
+
+    const allComments = [...formattedReviewComments, ...formattedIssueComments]
+
+    log('📝', `Found ${allComments.length} PR comments (${reviewComments.length} review, ${issueComments.length} issue) on PR #${prNumber}`, 'blue')
+
+    return allComments
+  } catch (error) {
+    log('❌', `Failed to get PR comments: ${error.message}`, 'red')
+    return null
+  }
+}
+
+/**
+ * Gets detailed reactions for a comment with user information.
+ *
+ * @param {number} commentId - The comment ID
+ * @param {string} commentType - Either 'review' or 'issue'
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @returns {Promise<Object>} - Object with reactions grouped by emoji type
+ */
+async function getDetailedReactions (commentId, commentType, owner, repo) {
+  try {
+    const endpoint = commentType === 'review'
+      ? octokit.rest.reactions.listForPullRequestReviewComment
+      : octokit.rest.reactions.listForIssueComment
+
+    const { data: reactions } = await endpoint({
+      owner,
+      repo,
+      comment_id: commentId
+    })
+
+    // Group reactions by content (emoji type)
+    const reactionsByEmoji = reactions.reduce((acc, reaction) => {
+      const emoji = reaction.content
+      if (!acc[emoji]) {
+        acc[emoji] = []
+      }
+      acc[emoji].push({
+        user: reaction.user.login,
+        created_at: reaction.created_at
+      })
+      return acc
+    }, {})
+
+    return reactionsByEmoji
+  } catch (error) {
+    log('⚠️', `Failed to get reactions for comment ${commentId}: ${error.message}`, 'yellow')
+    return {}
+  }
+}
+
+/**
  * Updates an existing pull request by merging main and calling Claude to handle merge conflicts
  * @param {Object} issue - The issue object containing branch information
  * @param {Object} repoInfo - Repository information
@@ -418,5 +547,7 @@ module.exports = {
   checkoutBranch,
   createPR,
   findExistingPR,
-  updateExistingPR
+  updateExistingPR,
+  getPRComments,
+  getDetailedReactions
 }

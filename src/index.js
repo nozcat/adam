@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /*
@@ -124,6 +124,13 @@ async function processIssue (issue) {
     if (!updateSuccess) {
       log('❌', `Failed to update existing PR for issue ${issue.identifier}`, 'red')
     }
+
+    // Get the comments on the PR.
+    const comments = await getPRComments(existingPR.number, issue.repository)
+    if (comments) {
+      console.log(comments)
+    }
+
     return
   }
 
