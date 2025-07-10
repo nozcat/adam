@@ -20,6 +20,8 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
 - **Linear API access** - API key with read access to your Linear workspace
 - **GitHub access** - Personal access token with repo permissions
 - **Claude Code** - Adam uses Claude Code to implement changes
+  - Install with: `npm install -g @anthropic-ai/claude-code`
+  - Requires authentication with your Anthropic account
 
 ### Setup
 
@@ -49,6 +51,43 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
    ```
 
 Adam will begin polling Linear for assigned issues and processing them automatically.
+
+## Docker Setup
+
+Adam can also be run in a Docker container for easier deployment and isolation.
+
+### Quick Start with Docker
+
+1. **Build the Docker image**:
+   ```bash
+   docker build -t adam .
+   ```
+
+2. **Run Adam in Docker**:
+   ```bash
+   docker run -it -v /path/to/your/.env:/app/config/.env adam
+   ```
+
+3. **Authenticate Claude Code** (required step):
+   When the container starts, you'll need to authenticate Claude Code:
+   ```bash
+   # In the container terminal
+   claude
+   # Then type: /login
+   # Follow the authentication prompts
+   ```
+
+After authentication, Adam will start automatically and begin processing issues.
+
+### Docker Features
+
+- **Ubuntu-based** with Node.js 24+ and common developer tools
+- **Claude Code pre-installed** globally
+- **Automatic repository cloning** from GitHub
+- **Environment variable handling** via mounted `.env` file
+- **Interactive authentication** support for Claude Code
+
+For detailed Docker setup instructions, see [DOCKER.md](DOCKER.md).
 
 ## Workflow for Interacting with Adam
 
