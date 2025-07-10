@@ -67,7 +67,7 @@ async function processIssue (issue) {
   log('🔄', `Processing ${getIssueShortName(issue)}`, 'blue')
 
   // Check we have a known repository for the issue.
-  if (!issue.repository) {
+  if (!issue.repository?.owner || !issue.repository?.name) {
     log('⚠️', `No repository found for issue ${issue.identifier}. Skipping...`, 'yellow')
     return
   }

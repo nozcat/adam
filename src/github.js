@@ -173,11 +173,6 @@ async function checkoutBranch (branchName, repoPath) {
  * - BASE_BRANCH: The base branch for PRs (defaults to 'main')
  */
 async function createPR (issue, branchName, repoInfo) {
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return null
-  }
-
   try {
     const { owner, name: repo } = repoInfo
     const baseBranch = process.env.BASE_BRANCH || 'main'
@@ -264,11 +259,6 @@ ${issue.description}`
  * @returns {Promise<Object|null>} The existing PR object if found, null otherwise
  */
 async function findExistingPR (issue, repoInfo) {
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return null
-  }
-
   try {
     const { owner, name: repo } = repoInfo
 
@@ -311,11 +301,6 @@ async function findExistingPR (issue, repoInfo) {
  */
 async function getPRComments (prNumber, repoInfo) {
   log('🔍', `Getting comments for PR #${prNumber}`, 'blue')
-
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return null
-  }
 
   try {
     const { owner, name: repo } = repoInfo
@@ -510,11 +495,6 @@ async function updateExistingPR (issue, repoInfo) {
 async function postReviewCommentReply (prNumber, inReplyToId, body, repoInfo) {
   log('💬', `Posting review comment reply to PR #${prNumber}`, 'blue')
 
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return null
-  }
-
   try {
     const { owner, name: repo } = repoInfo
 
@@ -559,11 +539,6 @@ async function postReviewCommentReply (prNumber, inReplyToId, body, repoInfo) {
  */
 async function postPRComment (prNumber, body, repoInfo, quotedComment = null) {
   log('💬', `Posting comment to PR #${prNumber}`, 'blue')
-
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return null
-  }
 
   try {
     const { owner, name: repo } = repoInfo
@@ -618,11 +593,6 @@ async function postPRComment (prNumber, body, repoInfo, quotedComment = null) {
  */
 async function addCommentReaction (commentId, commentType, reaction, repoInfo) {
   log('👁️', `Adding ${reaction} reaction to ${commentType} comment ${commentId}`, 'blue')
-
-  if (!repoInfo?.owner || !repoInfo?.name) {
-    log('❌', 'Repository owner and name are required', 'red')
-    return false
-  }
 
   try {
     const { owner, name: repo } = repoInfo
