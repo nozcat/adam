@@ -131,7 +131,12 @@ async function processExistingPR (existingPR, issue) {
   if (comments) {
     const conversationThreads = filterRelevantComments(comments)
     if (conversationThreads.length > 0) {
-      console.log(conversationThreads)
+      const prompts = conversationThreads.map(thread => generateThreadPrompt(thread))
+      prompts.forEach((prompt, index) => {
+        console.log(`\n=== PROMPT ${index + 1} ===`)
+        console.log(prompt)
+        console.log('=== END PROMPT ===\n')
+      })
     }
   }
 }
@@ -192,6 +197,71 @@ function buildConversationThread (comment, allComments) {
   }
 
   return thread
+}
+
+/**
+ * Generates a comprehensive prompt for Claude to process a conversation thread.
+ * The prompt includes full context and asks Claude to determine if changes are needed,
+ * make them if so, commit them, and provide a response.
+ *
+ * @param {Array} thread - Array of comments forming the conversation thread, ordered from root to leaf.
+ * @returns {string} A formatted prompt string for Claude.
+ */
+function generateThreadPrompt (thread) {
+  const threadContext = thread.map((comment, index) => {
+    const isRoot = index === 0
+    const prefix = isRoot ? 'ORIGINAL COMMENT' : `REPLY ${index}`
+
+    let context = `${prefix}:\n`
+    context += `Author: ${comment.user}\n`
+    context += `Body: ${comment.body}\n`
+
+    if (comment.path) {
+      context += `File: ${comment.path}\n`
+    }
+
+    if (comment.line) {
+      context += `Line: ${comment.line}\n`
+    }
+
+    if (comment.diff_hunk) {
+      context += `Diff Context:\n${comment.diff_hunk}\n`
+    }
+
+    if (comment.created_at) {
+      context += `Created: ${comment.created_at}\n`
+    }
+
+    return context
+  }).join('\n---\n\n')
+
+  return `You are Claude, an AI assistant helping with code review and development. Below is a conversation thread from a GitHub pull request that requires your attention. Please analyze the full context and determine if any coding changes are needed.
+
+CONVERSATION THREAD:
+${threadContext}
+
+INSTRUCTIONS:
+1. Analyze the conversation thread above, paying attention to the full context including:
+   - The original comment and all replies
+   - File paths, line numbers, and diff context where provided
+   - The progression of the conversation and any decisions made
+
+2. Determine if this conversation requires a coding change:
+   - If YES: Make the necessary changes to address the feedback/requests in the conversation
+   - If NO: Explain why no changes are needed
+
+3. If you make changes:
+   - Implement the changes completely
+   - Test your changes if applicable
+   - Commit your changes with a descriptive commit message
+
+4. Provide a response that summarizes:
+   - What you analyzed from the conversation
+   - Whether changes were made and what they were
+   - Or why no changes were necessary
+   - Any additional context that would be helpful
+
+Your response should be suitable as a reply to the conversation thread.`
 }
 
 /**
