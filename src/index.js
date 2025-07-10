@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude } = require('./claude')
 const { log } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranch } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /**
@@ -168,6 +168,14 @@ async function processExistingPR (existingPR, issue) {
 
           if (comment) {
             log('💬', `Successfully posted Claude response as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
+
+            // Push the branch to remote after making changes
+            const pushSuccess = await pushBranch(issue.branchName, issue.repository)
+            if (pushSuccess) {
+              log('📤', 'Successfully pushed changes to remote branch', 'green')
+            } else {
+              log('❌', 'Failed to push changes to remote branch', 'red')
+            }
           } else {
             log('❌', 'Failed to post Claude response to GitHub PR', 'red')
           }

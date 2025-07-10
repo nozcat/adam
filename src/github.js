@@ -625,6 +625,37 @@ async function addCommentReaction (commentId, commentType, reaction, repoInfo) {
   }
 }
 
+/**
+ * Pushes the current branch to the remote repository.
+ *
+ * @param {string} branchName - The name of the branch to push
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.name - Repository name
+ * @returns {Promise<boolean>} - True if push was successful, false otherwise
+ *
+ * @example
+ * const success = await pushBranch('feature-branch', {
+ *   name: 'my-repo'
+ * })
+ */
+async function pushBranch (branchName, repoInfo) {
+  log('📤', `Pushing branch ${branchName} to remote`, 'blue')
+
+  try {
+    const repoPath = `./${repoInfo.name}`
+    const git = simpleGit(repoPath)
+
+    // Push the branch to origin
+    await git.push('origin', branchName)
+
+    log('✅', `Successfully pushed branch ${branchName} to remote`, 'green')
+    return true
+  } catch (error) {
+    log('❌', `Failed to push branch ${branchName}: ${error.message}`, 'red')
+    return false
+  }
+}
+
 module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
@@ -635,5 +666,6 @@ module.exports = {
   getDetailedReactions,
   postPRComment,
   postReviewCommentReply,
-  addCommentReaction
+  addCommentReaction,
+  pushBranch
 }
