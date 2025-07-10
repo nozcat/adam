@@ -116,13 +116,17 @@ async function checkoutBranch (branchName, repoPath) {
       log('🌿', `Branch ${branchName} already exists, checking out...`, 'yellow')
       await git.checkout(branchName)
 
-      // Pull latest changes from remote branch
-      log('📥', `Pulling latest changes for branch: ${branchName}`, 'blue')
+      // Fetch latest refs and reset to remote branch
+      log('📥', `Fetching latest changes and resetting to remote branch: ${branchName}`, 'blue')
       try {
-        await git.pull('origin', branchName)
-        log('✅', `Successfully pulled latest changes for branch: ${branchName}`, 'green')
-      } catch (pullError) {
-        log('⚠️', `Could not pull from remote branch ${branchName}: ${pullError.message}`, 'yellow')
+        // Fetch latest refs from remote
+        await git.fetch('origin', branchName)
+
+        // Reset to match remote exactly (discarding any local changes)
+        await git.reset(['--hard', `origin/${branchName}`])
+        log('✅', `Successfully reset to remote branch: origin/${branchName}`, 'green')
+      } catch (resetError) {
+        log('⚠️', `Could not reset to remote branch ${branchName}: ${resetError.message}`, 'yellow')
         log('ℹ️', 'This might be expected if the branch only exists locally', 'blue')
       }
 
