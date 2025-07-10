@@ -85,6 +85,12 @@ function extractRepository (content) {
   return null
 }
 
+/**
+ * Get the short name of an issue for display.
+ *
+ * @param {Object} issue - The issue to get the short name from.
+ * @returns {string} The short name of the issue.
+ */
 function getIssueShortName (issue) {
   const repository = issue.repository ? `${issue.repository.owner}/${issue.repository.name}` : 'unknown repository'
   return `[${issue.identifier}] ${issue.title} (${repository})`

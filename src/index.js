@@ -5,33 +5,6 @@ const { log } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
-/*
-async function monitorPRs (repoInfo) {
-  try {
-    const activePRs = await getActivePRs(repoInfo)
-
-    for (const pr of activePRs) {
-      const feedback = await handlePRFeedback(pr.number, pr.head.ref, repoInfo)
-
-      if (feedback.hasFeedback) {
-        const feedbackPrompt = `Please address the following PR feedback:\n\n${feedback.feedbackSummary}`
-        const claudeSuccess = await callClaude(feedbackPrompt, repoInfo ? `./${repoInfo.name}` : TARGET_REPO, DEBUG)
-
-        if (claudeSuccess) {
-          log('✅', `Successfully addressed feedback for PR #${pr.number}`, 'green')
-        } else {
-          log('❌', `Failed to address feedback for PR #${pr.number}`, 'red')
-        }
-      }
-
-      await checkPRApproval(pr.number, repoInfo)
-    }
-  } catch (error) {
-    log('❌', `Error monitoring PRs: ${error.message}`, 'red')
-  }
-}
-*/
-
 /**
  * Main entry point.
  */
