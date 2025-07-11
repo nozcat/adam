@@ -3,8 +3,7 @@ const chalk = require('chalk')
 const { marked } = require('marked')
 const { log, DEBUG } = require('./util')
 
-// Track if Claude permissions have been verified
-let claudePermissionsVerified = false
+// Track when Claude permissions were last verified
 let lastClaudePermissionsVerified = 0
 
 /**
@@ -18,14 +17,13 @@ async function checkClaudePermissions () {
   const tenMinutesMs = 10 * 60 * 1000
   const now = Date.now()
 
-  if (claudePermissionsVerified && (now - lastClaudePermissionsVerified) > tenMinutesMs) {
+  if (lastClaudePermissionsVerified > 0 && (now - lastClaudePermissionsVerified) > tenMinutesMs) {
     // Reset verification after 10 minutes of inactivity
-    claudePermissionsVerified = false
     lastClaudePermissionsVerified = 0
   }
 
   // Return cached result if already verified and within timeout
-  if (claudePermissionsVerified) {
+  if (lastClaudePermissionsVerified > 0) {
     return true
   }
 
@@ -36,7 +34,6 @@ async function checkClaudePermissions () {
 
     claude.on('close', (code) => {
       if (code === 0) {
-        claudePermissionsVerified = true
         lastClaudePermissionsVerified = Date.now()
         resolve(true)
       } else {
