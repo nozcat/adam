@@ -82,6 +82,5 @@ fi\n\
 # Start the application\n\
 npm run start' > /app/start.sh && chmod +x /app/start.sh
 
-
 # Set the default command
 CMD ["/app/start.sh"]
