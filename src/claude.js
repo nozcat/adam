@@ -22,6 +22,7 @@ async function checkClaudePermissions () {
   }
 
   return new Promise((resolve) => {
+    log('🔍', 'Checking Claude permissions...', 'blue')
     const args = ['--print', "don't do anything"]
     const options = { stdio: ['ignore', 'pipe', 'pipe'] }
     const claude = spawn('claude', args, options)
