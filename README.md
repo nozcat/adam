@@ -20,6 +20,8 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
 - **Linear API access** - API key with read access to your Linear workspace
 - **GitHub access** - Personal access token with repo permissions
 - **Claude Code** - Adam uses Claude Code to implement changes
+  - Install with: `npm install -g @anthropic-ai/claude-code`
+  - Requires authentication with your Anthropic account
 
 ### Setup
 
@@ -49,6 +51,74 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
    ```
 
 Adam will begin polling Linear for assigned issues and processing them automatically.
+
+## Docker Setup
+
+Adam can also be run in a Docker container for easier deployment and isolation.
+
+### Prerequisites
+
+1. **Claude Code Authentication**: Claude Code must be authenticated before running Adam in Docker. This cannot be done inside the Docker container itself.
+
+2. **Environment File**: Create a `.env` file with your configuration (see above for required variables).
+
+### Step-by-Step Setup
+
+1. **Prepare your environment file**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual API keys and configuration
+   ```
+
+2. **Build the Docker image**:
+   ```bash
+   docker build -t adam .
+   ```
+
+3. **Run the Docker container**:
+   ```bash
+   docker run -it -v /path/to/your/.env:/app/config/.env adam
+   ```
+
+4. **Authenticate Claude Code**:
+   Once the container starts, you'll need to authenticate Claude Code:
+   ```bash
+   # In the container terminal that opens
+   claude
+   # Then type:
+   /login
+   # Follow the authentication prompts
+   ```
+
+5. **Start Adam**:
+   After authentication is complete, Adam will start automatically and begin processing Linear issues.
+
+### Alternative: Interactive Shell
+
+If you need to troubleshoot or work interactively:
+```bash
+docker run -it -v /path/to/your/.env:/app/config/.env --entrypoint /bin/bash adam
+```
+
+Then manually:
+1. Copy environment: `cp /app/config/.env /app/agents/adam/adam/.env`
+2. Authenticate Claude Code: `claude` then `/login`
+3. Start Adam: `npm run start`
+
+### Docker Features
+
+- **Ubuntu-based** with Node.js 24+ and common developer tools
+- **Claude Code pre-installed** globally
+- **Automatic repository cloning** from GitHub
+- **Environment variable handling** via mounted `.env` file
+- **Interactive authentication** support for Claude Code
+
+### Important Notes
+
+- **Authentication Requirement**: Claude Code authentication is required and must be done interactively after starting the container
+- **Volume Mount**: Your `.env` file must be mounted to `/app/config/.env` in the container
+- **Network Access**: The container needs internet access to communicate with Linear, GitHub, and Claude APIs
+- **Persistent Data**: Consider mounting a volume for git repositories if you want to persist cloned repos between container restarts
 
 ## Workflow for Interacting with Adam
 
