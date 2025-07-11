@@ -94,7 +94,7 @@ async function processIssue (issue) {
   }
 
   // Checkout the branch for the issue.
-  const checkedOutBranch = await checkoutBranch(issue.branchName, issue.repository.name)
+  const checkedOutBranch = await checkoutBranch(issue.branchName, getRepoPath(issue.repository.name))
   if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
     return
