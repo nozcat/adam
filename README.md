@@ -120,12 +120,6 @@ Then manually:
 - **Network Access**: The container needs internet access to communicate with Linear, GitHub, and Claude APIs
 - **Persistent Data**: Consider mounting a volume for git repositories if you want to persist cloned repos between container restarts
 
-### Troubleshooting
-
-- **Authentication Issues**: If Claude Code fails to authenticate, ensure you have a valid Anthropic account and API access
-- **Environment Variables**: Double-check that all required environment variables are set in your `.env` file
-- **Network Connectivity**: Ensure the container has access to external APIs (Linear, GitHub, Claude)
-
 ## Workflow for Interacting with Adam
 
 ### 1. Repository Configuration
