@@ -82,8 +82,6 @@ fi\n\
 # Start the application\n\
 npm run start' > /app/start.sh && chmod +x /app/start.sh
 
-# Expose any necessary ports (if Adam serves any web interface)
-# EXPOSE 3000
 
 # Set the default command
 CMD ["/app/start.sh"]
