@@ -3,11 +3,24 @@ const chalk = require('chalk')
 const { marked } = require('marked')
 const { log, DEBUG } = require('./util')
 
+// Track when Claude permissions were last verified
+let lastClaudePermissionsVerified = 0
+
 /**
  * Checks if Claude Code has proper permissions by running a simple command
+ * Uses cached result to avoid repeated checks after first success
+ * Resets verification after 10 minutes of inactivity
  * @returns {Promise<boolean>} True if Claude has permissions, false otherwise
  */
 async function checkClaudePermissions () {
+  // Return cached result if less than 10 minutes have passed since last verification
+  const tenMinutesMs = 10 * 60 * 1000
+  const now = Date.now()
+
+  if (lastClaudePermissionsVerified > 0 && (now - lastClaudePermissionsVerified) < tenMinutesMs) {
+    return true
+  }
+
   return new Promise((resolve) => {
     const args = ['--print', "don't do anything"]
     const options = { stdio: ['ignore', 'pipe', 'pipe'] }
@@ -15,6 +28,7 @@ async function checkClaudePermissions () {
 
     claude.on('close', (code) => {
       if (code === 0) {
+        lastClaudePermissionsVerified = Date.now()
         resolve(true)
       } else {
         resolve(false)
@@ -72,6 +86,8 @@ async function callClaude (prompt, dir) {
           reject(new Error(`Claude Code failed: ${result.result}`))
         } else {
           log('✅', 'Claude Code completed successfully', 'green')
+          // Update timestamp on successful Claude call
+          lastClaudePermissionsVerified = Date.now()
           resolve(result.result)
         }
       } else {
