@@ -12,6 +12,7 @@ services:
       - BASE_BRANCH=${BASE_BRANCH:-main}
       - DEBUG=${DEBUG:-false}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - REPOS_DIR=${REPOS_DIR:-repos}
     volumes:
       # Optional: Mount a volume for persistent git repositories
       - adam_repos:/app/repos

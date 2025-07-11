@@ -6,6 +6,16 @@ const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, update
 const { pollLinear, getIssueShortName } = require('./linear')
 
 /**
+ * Gets the repository path using the REPOS_DIR environment variable
+ * @param {string} repoName - The repository name
+ * @returns {string} The full repository path
+ */
+function getRepoPath (repoName) {
+  const reposDir = process.env.REPOS_DIR || 'repos'
+  return `./${reposDir}/${repoName}`
+}
+
+/**
  * Main entry point.
  */
 async function main () {
@@ -109,7 +119,7 @@ async function processIssue (issue) {
 
   // Call Claude to generate the code.
   const prompt = await generatePrompt(issue)
-  const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`)
+  const claudeSuccess = await callClaude(prompt, getRepoPath(issue.repository.name))
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
     return
@@ -162,7 +172,7 @@ async function processExistingPR (existingPR, issue) {
         log('🤖', `Running Claude to process conversation thread ${i + 1}...`, 'blue')
 
         try {
-          const claudeResponse = await callClaude(prompt, `./${issue.repository.name}`)
+          const claudeResponse = await callClaude(prompt, getRepoPath(issue.repository.name))
 
           if (claudeResponse) {
             log('✅', `Successfully processed conversation thread ${i + 1} with Claude`, 'green')
@@ -295,7 +305,7 @@ function buildConversationThread (comment, allComments) {
  */
 async function ensureChangesCommitted (repoName, branchName) {
   const simpleGit = require('simple-git')
-  const repoPath = `./${repoName}`
+  const repoPath = getRepoPath(repoName)
   const git = simpleGit(repoPath)
 
   const maxRetries = 3
