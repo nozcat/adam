@@ -43,7 +43,7 @@ async function performActions () {
   // Check Claude permissions before doing anything else
   const hasPermissions = await checkClaudePermissions()
   if (!hasPermissions) {
-    log('❌', 'Invalid API key · Please run /login', 'red')
+    log('❌', 'Invalid Claude API key · Please run /login', 'red')
     return
   }
 
