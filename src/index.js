@@ -1,6 +1,6 @@
 require('dotenv').config()
 
-const { callClaude } = require('./claude')
+const { callClaude, checkClaudePermissions } = require('./claude')
 const { log } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranch } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
@@ -40,6 +40,13 @@ async function main () {
  * Perform one iteration of actions in the main loop.
  */
 async function performActions () {
+  // Check Claude permissions before doing anything else
+  const hasPermissions = await checkClaudePermissions()
+  if (!hasPermissions) {
+    log('❌', 'Invalid API key · Please run /login', 'red')
+    return
+  }
+
   const issues = await pollLinear()
 
   printIssues(issues)

@@ -4,6 +4,31 @@ const { marked } = require('marked')
 const { log, DEBUG } = require('./util')
 
 /**
+ * Checks if Claude Code has proper permissions by running a simple command
+ * @returns {Promise<boolean>} True if Claude has permissions, false otherwise
+ */
+async function checkClaudePermissions () {
+  return new Promise((resolve) => {
+    const args = ['--print', "don't do anything"]
+    const options = { stdio: ['ignore', 'pipe', 'pipe'] }
+    const claude = spawn('claude', args, options)
+
+    claude.on('close', (code) => {
+      if (code === 0) {
+        resolve(true)
+      } else {
+        resolve(false)
+      }
+    })
+
+    claude.on('error', (error) => {
+      log('❌', `Failed to check Claude permissions: ${error.message}`, 'red')
+      resolve(false)
+    })
+  })
+}
+
+/**
  * Executes Claude Code with the given prompt and returns the result
  * @param {string} prompt - The prompt to send to Claude Code
  * @param {string} dir - The directory to run Claude Code in
@@ -313,4 +338,4 @@ function limitLinesWithMore (content, maxLines = 10) {
   return topLines.join('\n') + '\n' + chalk.dim(moreIndicator) + '\n' + bottomLines.join('\n')
 }
 
-module.exports = { callClaude }
+module.exports = { callClaude, checkClaudePermissions }
