@@ -70,6 +70,9 @@ RUN npm install
 # Copy the rest of the application
 COPY . .
 
+# Create repos directory and set permissions for appuser
+RUN mkdir -p /app/repos && chown -R appuser:appuser /app/repos
+
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appuser /app
 

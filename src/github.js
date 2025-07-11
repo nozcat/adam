@@ -1,6 +1,6 @@
 const { Octokit } = require('@octokit/rest')
 const simpleGit = require('simple-git')
-const { log } = require('./util')
+const { log, getRepoPath } = require('./util')
 const { callClaude } = require('./claude')
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
@@ -28,7 +28,7 @@ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 async function ensureRepositoryExists (repoInfo) {
   if (!repoInfo) return false
 
-  const repoPath = `./${repoInfo.name}`
+  const repoPath = getRepoPath(repoInfo.name)
   const fs = require('fs')
 
   if (fs.existsSync(repoPath)) {
@@ -176,7 +176,7 @@ async function createPR (issue, branchName, repoInfo) {
   try {
     const { owner, name: repo } = repoInfo
     const baseBranch = process.env.BASE_BRANCH || 'main'
-    const repoPath = `./${repoInfo.name}`
+    const repoPath = getRepoPath(repoInfo.name)
 
     // Push the branch to remote before creating PR
     const git = simpleGit(repoPath)
@@ -411,7 +411,7 @@ async function getDetailedReactions (commentId, commentType, owner, repo) {
  */
 async function updateExistingPR (issue, repoInfo) {
   try {
-    const repoPath = `./${repoInfo.name}`
+    const repoPath = getRepoPath(repoInfo.name)
     const git = simpleGit(repoPath)
     const baseBranch = process.env.BASE_BRANCH || 'main'
 
@@ -646,7 +646,7 @@ async function pushBranch (branchName, repoInfo) {
   log('📤', `Pushing branch ${branchName} to remote`, 'blue')
 
   try {
-    const repoPath = `./${repoInfo.name}`
+    const repoPath = getRepoPath(repoInfo.name)
     const git = simpleGit(repoPath)
 
     // Push the branch to origin

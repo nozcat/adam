@@ -1,7 +1,7 @@
 require('dotenv').config()
 
 const { callClaude, checkClaudePermissions } = require('./claude')
-const { log } = require('./util')
+const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranch } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
 
@@ -94,7 +94,7 @@ async function processIssue (issue) {
   }
 
   // Checkout the branch for the issue.
-  const checkedOutBranch = await checkoutBranch(issue.branchName, issue.repository.name)
+  const checkedOutBranch = await checkoutBranch(issue.branchName, getRepoPath(issue.repository.name))
   if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
     return
@@ -109,7 +109,7 @@ async function processIssue (issue) {
 
   // Call Claude to generate the code.
   const prompt = await generatePrompt(issue)
-  const claudeSuccess = await callClaude(prompt, `./${issue.repository.name}`)
+  const claudeSuccess = await callClaude(prompt, getRepoPath(issue.repository.name))
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
     return
@@ -162,7 +162,7 @@ async function processExistingPR (existingPR, issue) {
         log('🤖', `Running Claude to process conversation thread ${i + 1}...`, 'blue')
 
         try {
-          const claudeResponse = await callClaude(prompt, `./${issue.repository.name}`)
+          const claudeResponse = await callClaude(prompt, getRepoPath(issue.repository.name))
 
           if (claudeResponse) {
             log('✅', `Successfully processed conversation thread ${i + 1} with Claude`, 'green')
@@ -295,7 +295,7 @@ function buildConversationThread (comment, allComments) {
  */
 async function ensureChangesCommitted (repoName, branchName) {
   const simpleGit = require('simple-git')
-  const repoPath = `./${repoName}`
+  const repoPath = getRepoPath(repoName)
   const git = simpleGit(repoPath)
 
   const maxRetries = 3
