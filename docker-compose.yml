@@ -1,0 +1,31 @@
+services:
+  adam:
+    build: .
+    container_name: adam-agent
+    restart: unless-stopped
+    environment:
+      # Override with environment variables if needed
+      - LINEAR_API_KEY=${LINEAR_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_USERNAME=${GITHUB_USERNAME}
+      - GITHUB_EMAIL=${GITHUB_EMAIL}
+      - BASE_BRANCH=${BASE_BRANCH:-main}
+      - DEBUG=${DEBUG:-false}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+    volumes:
+      # Mount .env file if it exists
+      - ./.env:/app/config/.env:ro
+      # Optional: Mount a volume for persistent git repositories
+      - adam_repos:/app/repos
+    stdin_open: true
+    tty: true
+    networks:
+      - adam-network
+
+volumes:
+  adam_repos:
+    driver: local
+
+networks:
+  adam-network:
+    driver: bridge
