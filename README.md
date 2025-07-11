@@ -10,7 +10,7 @@ Adam is a developer AI agent that automates the software development workflow by
 - **Responding to feedback** - Processes PR comments and feedback, implements requested changes, and responds to conversation threads
 - **Managing Git workflow** - Handles branch creation, commits, and push operations
 
-Adam runs in a continuous loop, checking for new issues and PR feedback every 30 seconds, making it a fully automated development assistant.
+Adam runs in a continuous loop, checking for new issues and PR feedback at configurable intervals (default: 30 seconds), making it a fully automated development assistant.
 
 ## Starting Adam
 
@@ -43,6 +43,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback every 30
    # Optional
    BASE_BRANCH=main
    DEBUG=false
+   POLL_INTERVAL=30
    ```
 
 3. **Start Adam**
