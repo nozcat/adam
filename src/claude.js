@@ -3,11 +3,20 @@ const chalk = require('chalk')
 const { marked } = require('marked')
 const { log, DEBUG } = require('./util')
 
+// Track if Claude permissions have been verified
+let claudePermissionsVerified = false
+
 /**
  * Checks if Claude Code has proper permissions by running a simple command
+ * Uses cached result to avoid repeated checks after first success
  * @returns {Promise<boolean>} True if Claude has permissions, false otherwise
  */
 async function checkClaudePermissions () {
+  // Return cached result if already verified
+  if (claudePermissionsVerified) {
+    return true
+  }
+
   return new Promise((resolve) => {
     const args = ['--print', "don't do anything"]
     const options = { stdio: ['ignore', 'pipe', 'pipe'] }
@@ -15,6 +24,7 @@ async function checkClaudePermissions () {
 
     claude.on('close', (code) => {
       if (code === 0) {
+        claudePermissionsVerified = true
         resolve(true)
       } else {
         resolve(false)
