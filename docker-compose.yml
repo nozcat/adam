@@ -14,7 +14,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
     volumes:
-      # Optional: Mount a volume for persistent git repositories
+      # Mount a volume for persistent git repositories
       - adam_repos:/app/repos
     stdin_open: true
     tty: true
