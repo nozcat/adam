@@ -54,8 +54,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
-# Create a non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create a non-root user with home directory
+RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
 # Set working directory
 WORKDIR /app
