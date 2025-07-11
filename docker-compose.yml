@@ -13,8 +13,6 @@ services:
       - DEBUG=${DEBUG:-false}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
     volumes:
-      # Mount .env file if it exists
-      - ./.env:/app/config/.env:ro
       # Optional: Mount a volume for persistent git repositories
       - adam_repos:/app/repos
     stdin_open: true
