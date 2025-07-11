@@ -11,8 +11,8 @@ const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
  * @returns {string} The full repository path
  */
 function getRepoPath (repoName) {
-  const reposDir = process.env.REPOS_DIR || 'repos'
-  return `./${reposDir}/${repoName}`
+  const reposDir = process.env.REPOS_DIR || './repos'
+  return `${reposDir}/${repoName}`
 }
 
 /**
