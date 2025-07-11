@@ -1,19 +1,9 @@
 const { Octokit } = require('@octokit/rest')
 const simpleGit = require('simple-git')
-const { log } = require('./util')
+const { log, getRepoPath } = require('./util')
 const { callClaude } = require('./claude')
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
-
-/**
- * Gets the repository path using the REPOS_DIR environment variable
- * @param {string} repoName - The repository name
- * @returns {string} The full repository path
- */
-function getRepoPath (repoName) {
-  const reposDir = process.env.REPOS_DIR || './repos'
-  return `${reposDir}/${repoName}`
-}
 
 /**
  * Ensures a GitHub repository exists locally by cloning it if not present.

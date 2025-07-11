@@ -1,19 +1,9 @@
 require('dotenv').config()
 
 const { callClaude, checkClaudePermissions } = require('./claude')
-const { log } = require('./util')
+const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranch } = require('./github')
 const { pollLinear, getIssueShortName } = require('./linear')
-
-/**
- * Gets the repository path using the REPOS_DIR environment variable
- * @param {string} repoName - The repository name
- * @returns {string} The full repository path
- */
-function getRepoPath (repoName) {
-  const reposDir = process.env.REPOS_DIR || 'repos'
-  return `./${reposDir}/${repoName}`
-}
 
 /**
  * Main entry point.

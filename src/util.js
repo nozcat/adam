@@ -10,6 +10,16 @@ const DEBUG = process.env.DEBUG === 'true'
 marked.use(markedTerminal())
 
 /**
+ * Gets the repository path using the REPOS_DIR environment variable
+ * @param {string} repoName - The repository name
+ * @returns {string} The full repository path
+ */
+function getRepoPath (repoName) {
+  const reposDir = process.env.REPOS_DIR || './repos'
+  return `${reposDir}/${repoName}`
+}
+
+/**
  * Logs a message with an emoji prefix and optional color formatting
  * @param {string} emoji - The emoji to prefix the message with
  * @param {string} message - The message to log
@@ -24,4 +34,4 @@ function log (emoji, message, color) {
   console.log()
 }
 
-module.exports = { log, DEBUG }
+module.exports = { log, DEBUG, getRepoPath }
