@@ -55,7 +55,7 @@ Adam will begin polling Linear for assigned issues and processing them automatic
 
 ## Docker Setup
 
-Adam can also be run in a Docker container for easier deployment and isolation.
+Adam can be run in a Docker container for easier deployment and isolation.
 
 ### Prerequisites
 
@@ -63,7 +63,43 @@ Adam can also be run in a Docker container for easier deployment and isolation.
 
 2. **Environment File**: Create a `.env` file with your configuration (see above for required variables).
 
-### Step-by-Step Setup
+### Docker Compose (Recommended)
+
+The easiest way to run Adam with Docker is using Docker Compose:
+
+1. **Prepare your environment file**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual API keys and configuration
+   ```
+
+2. **Start Adam with Docker Compose**:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Authenticate Claude Code**:
+   Connect to the running container to authenticate:
+   ```bash
+   docker-compose exec adam claude
+   # Then type:
+   /login
+   # Follow the authentication prompts
+   ```
+
+4. **View logs**:
+   ```bash
+   docker-compose logs -f adam
+   ```
+
+5. **Stop Adam**:
+   ```bash
+   docker-compose down
+   ```
+
+### Manual Docker Setup
+
+Alternatively, you can run Adam with standard Docker commands:
 
 1. **Prepare your environment file**:
    ```bash
