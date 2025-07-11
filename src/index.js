@@ -154,6 +154,12 @@ async function processExistingPR (existingPR, issue) {
           if (claudeResponse) {
             log('✅', `Successfully processed conversation thread ${i + 1} with Claude`, 'green')
 
+            // Verify that changes were committed and retry if needed
+            const commitSuccess = await ensureChangesCommitted(issue.repository.name, issue.branchName)
+            if (!commitSuccess) {
+              log('❌', `Failed to ensure changes were committed for thread ${i + 1}`, 'red')
+            }
+
             // Determine how to reply based on the last comment in the thread
             let comment
 
@@ -267,6 +273,81 @@ function buildConversationThread (comment, allComments) {
 }
 
 /**
+ * Ensures that changes have been committed to the repository after Claude processing.
+ * If changes exist but haven't been committed, it will retry up to 3 times with Claude to commit them.
+ *
+ * @param {string} repoName - The name of the repository
+ * @param {string} branchName - The name of the branch
+ * @returns {Promise<boolean>} - True if changes are committed or no changes exist, false if failed
+ */
+async function ensureChangesCommitted (repoName, branchName) {
+  const simpleGit = require('simple-git')
+  const repoPath = `./${repoName}`
+  const git = simpleGit(repoPath)
+
+  const maxRetries = 3
+  let retry = 0
+
+  while (retry < maxRetries) {
+    try {
+      // Check if there are any uncommitted changes
+      const status = await git.status()
+      const hasUncommittedChanges = status.files.length > 0
+
+      if (!hasUncommittedChanges) {
+        log('✅', 'No uncommitted changes found', 'green')
+        return true
+      }
+
+      log('⚠️', `Found ${status.files.length} uncommitted changes on attempt ${retry + 1}/${maxRetries}`, 'yellow')
+
+      // List the uncommitted files for debugging
+      status.files.forEach(file => {
+        log('📄', `${file.index}${file.working_dir} ${file.path}`, 'yellow')
+      })
+
+      // Generate a commit prompt for Claude
+      const commitPrompt = `You have made changes to the codebase but they have not been committed to git yet.
+
+UNCOMMITTED CHANGES:
+${status.files.map(file => `${file.index}${file.working_dir} ${file.path}`).join('\n')}
+
+CRITICAL: You must commit these changes now. Please:
+1. Use 'git add' to stage all the changed files
+2. Create a commit with a descriptive message that explains what was changed
+3. Do NOT skip this step - the automation depends on these changes being committed
+
+Please commit these changes immediately.`
+
+      log('🔄', `Attempting to commit changes with Claude (attempt ${retry + 1}/${maxRetries})...`, 'blue')
+
+      const commitSuccess = await callClaude(commitPrompt, repoPath)
+      if (!commitSuccess) {
+        log('❌', `Claude failed to commit changes on attempt ${retry + 1}`, 'red')
+        retry++
+        continue
+      }
+
+      // Verify the commit was successful
+      const newStatus = await git.status()
+      if (newStatus.files.length === 0) {
+        log('✅', `Successfully committed changes on attempt ${retry + 1}`, 'green')
+        return true
+      }
+
+      log('⚠️', `Changes still not committed after attempt ${retry + 1}`, 'yellow')
+      retry++
+    } catch (error) {
+      log('❌', `Error checking git status on attempt ${retry + 1}: ${error.message}`, 'red')
+      retry++
+    }
+  }
+
+  log('❌', `Failed to commit changes after ${maxRetries} attempts`, 'red')
+  return false
+}
+
+/**
  * Generates a comprehensive prompt for Claude to process a conversation thread.
  * The prompt includes full context and asks Claude to determine if changes are needed,
  * make them if so, commit them, and provide a response.
@@ -320,7 +401,8 @@ INSTRUCTIONS:
 3. If you make changes:
    - Implement the changes completely
    - Test your changes if applicable
-   - Commit your changes with a descriptive commit message
+   - IMPORTANT: You MUST git add all changed files and commit your changes with a descriptive commit message
+   - Do NOT skip the commit step - this is critical for the automation to work properly
 
 4. Provide a response that summarizes:
    - What you analyzed from the conversation
