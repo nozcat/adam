@@ -46,13 +46,16 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /
     && apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust
+# Install Rust (as root, globally accessible)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
     && echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
+
+# Create a non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Set working directory
 WORKDIR /app
@@ -66,6 +69,12 @@ RUN npm install
 
 # Copy the rest of the application
 COPY . .
+
+# Change ownership of the app directory to the non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Create a script to handle environment variables and start the application
 RUN echo '#!/bin/bash\n\
