@@ -44,6 +44,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
    BASE_BRANCH=main
    DEBUG=false
    POLL_INTERVAL=30
+   REPOS_DIR=repos
    ```
 
 3. **Start Adam**
