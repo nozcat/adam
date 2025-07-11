@@ -36,15 +36,22 @@ async function main () {
   }
 }
 
+// Track if Claude permissions have been verified
+let claudePermissionsVerified = false
+
 /**
  * Perform one iteration of actions in the main loop.
  */
 async function performActions () {
-  // Check Claude permissions before doing anything else
-  const hasPermissions = await checkClaudePermissions()
-  if (!hasPermissions) {
-    log('❌', 'Invalid Claude API key · Please run /login', 'red')
-    return
+  // Check Claude permissions before doing anything else (only if not already verified)
+  if (!claudePermissionsVerified) {
+    const hasPermissions = await checkClaudePermissions()
+    if (!hasPermissions) {
+      log('❌', 'Invalid Claude API key · Please run /login', 'red')
+      return
+    }
+    claudePermissionsVerified = true
+    log('✅', 'Claude permissions verified - skipping future checks', 'green')
   }
 
   const issues = await pollLinear()
