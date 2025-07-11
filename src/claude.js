@@ -13,17 +13,11 @@ let lastClaudePermissionsVerified = 0
  * @returns {Promise<boolean>} True if Claude has permissions, false otherwise
  */
 async function checkClaudePermissions () {
-  // Check if 10 minutes have passed since last verification
+  // Return cached result if less than 10 minutes have passed since last verification
   const tenMinutesMs = 10 * 60 * 1000
   const now = Date.now()
 
-  if (lastClaudePermissionsVerified > 0 && (now - lastClaudePermissionsVerified) > tenMinutesMs) {
-    // Reset verification after 10 minutes of inactivity
-    lastClaudePermissionsVerified = 0
-  }
-
-  // Return cached result if already verified and within timeout
-  if (lastClaudePermissionsVerified > 0) {
+  if (lastClaudePermissionsVerified > 0 && (now - lastClaudePermissionsVerified) < tenMinutesMs) {
     return true
   }
 
