@@ -3,6 +3,7 @@ require('dotenv').config()
 const chalk = require('chalk')
 const { marked } = require('marked')
 const { markedTerminal } = require('marked-terminal')
+const fs = require('fs')
 
 const DEBUG = process.env.DEBUG === 'true'
 
@@ -16,6 +17,12 @@ marked.use(markedTerminal())
  */
 function getRepoPath (repoName) {
   const reposDir = process.env.REPOS_DIR || './repos'
+
+  // Create the reposDir if it doesn't exist (recursively)
+  if (!fs.existsSync(reposDir)) {
+    fs.mkdirSync(reposDir, { recursive: true })
+  }
+
   return `${reposDir}/${repoName}`
 }
 
