@@ -11,7 +11,13 @@ const { pollLinear, getIssueShortName } = require('./linear')
 async function main () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
 
-  // Main worker loop. We poll for actions every 30 seconds.
+  // Get poll interval from environment variable, default to 30 seconds
+  const pollIntervalSeconds = parseInt(process.env.POLL_INTERVAL) || 30
+  const pollIntervalMs = pollIntervalSeconds * 1000
+
+  log('⏱️', `Poll interval set to ${pollIntervalSeconds} seconds`, 'blue')
+
+  // Main worker loop. We poll for actions at the configured interval.
   while (true) {
     const start = Date.now()
 
@@ -22,7 +28,7 @@ async function main () {
     }
 
     const elapsed = Date.now() - start
-    const remaining = 30000 - elapsed
+    const remaining = pollIntervalMs - elapsed
 
     if (remaining > 0) {
       await new Promise(resolve => setTimeout(resolve, remaining))
