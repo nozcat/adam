@@ -86,10 +86,9 @@ async function processIssue (issue) {
   }
 
   // Clone the repository if it doesn't exist.
-  try {
-    await ensureRepositoryExists(issue.repository)
-  } catch (error) {
-    log('❌', `Failed to ensure repository exists for issue ${issue.identifier}: ${error.message}`, 'red')
+  const repoExists = await ensureRepositoryExists(issue.repository)
+  if (!repoExists) {
+    log('❌', `Failed to ensure repository exists for issue ${issue.identifier}`, 'red')
     return
   }
 
