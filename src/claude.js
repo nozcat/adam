@@ -5,14 +5,26 @@ const { log, DEBUG } = require('./util')
 
 // Track if Claude permissions have been verified
 let claudePermissionsVerified = false
+let lastClaudePermissionsVerified = 0
 
 /**
  * Checks if Claude Code has proper permissions by running a simple command
  * Uses cached result to avoid repeated checks after first success
+ * Resets verification after 10 minutes of inactivity
  * @returns {Promise<boolean>} True if Claude has permissions, false otherwise
  */
 async function checkClaudePermissions () {
-  // Return cached result if already verified
+  // Check if 10 minutes have passed since last verification
+  const tenMinutesMs = 10 * 60 * 1000
+  const now = Date.now()
+
+  if (claudePermissionsVerified && (now - lastClaudePermissionsVerified) > tenMinutesMs) {
+    // Reset verification after 10 minutes of inactivity
+    claudePermissionsVerified = false
+    lastClaudePermissionsVerified = 0
+  }
+
+  // Return cached result if already verified and within timeout
   if (claudePermissionsVerified) {
     return true
   }
@@ -25,6 +37,7 @@ async function checkClaudePermissions () {
     claude.on('close', (code) => {
       if (code === 0) {
         claudePermissionsVerified = true
+        lastClaudePermissionsVerified = Date.now()
         resolve(true)
       } else {
         resolve(false)
@@ -82,6 +95,8 @@ async function callClaude (prompt, dir) {
           reject(new Error(`Claude Code failed: ${result.result}`))
         } else {
           log('✅', 'Claude Code completed successfully', 'green')
+          // Update timestamp on successful Claude call
+          lastClaudePermissionsVerified = Date.now()
           resolve(result.result)
         }
       } else {
