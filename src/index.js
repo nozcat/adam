@@ -184,12 +184,6 @@ async function processConversationThreads (conversationThreads, existingPR, issu
     } catch (error) {
       log('❌', `Failed to process conversation thread ${i + 1}: ${error.message}`, 'red')
     }
-
-    // Add a small delay between processing threads to avoid overwhelming the system
-    if (i < conversationThreads.length - 1) {
-      log('⏳', 'Waiting before processing next thread...', 'blue')
-      await new Promise(resolve => setTimeout(resolve, 2000))
-    }
   }
 }
 
