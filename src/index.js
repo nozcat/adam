@@ -177,6 +177,12 @@ async function processConversationThreads (conversationThreads, existingPR, issu
       const claudeResponse = await callClaude(prompt, getRepoPath(issue.repository.name))
 
       if (claudeResponse) {
+        // Verify that changes were committed and retry if needed
+        const commitSuccess = await ensureChangesCommitted(issue.repository.name, issue.branchName)
+        if (!commitSuccess) {
+          log('❌', `Failed to ensure changes were committed for thread ${i + 1}`, 'red')
+        }
+
         await respondToConversationThread(claudeResponse, lastComment, existingPR, issue, i + 1)
       } else {
         log('❌', `Claude returned empty response for thread ${i + 1}`, 'red')
@@ -188,7 +194,7 @@ async function processConversationThreads (conversationThreads, existingPR, issu
 }
 
 /**
- * Respond to a conversation thread by committing changes, posting replies, and pushing to remote.
+ * Respond to a conversation thread by posting replies and pushing to remote.
  *
  * @param {string} claudeResponse - The response from Claude.
  * @param {Object} lastComment - The last comment in the thread.
@@ -197,13 +203,7 @@ async function processConversationThreads (conversationThreads, existingPR, issu
  * @param {number} threadNumber - The thread number for logging.
  */
 async function respondToConversationThread (claudeResponse, lastComment, existingPR, issue, threadNumber) {
-  log('✅', `Successfully processed conversation thread ${threadNumber} with Claude`, 'green')
-
-  // Verify that changes were committed and retry if needed
-  const commitSuccess = await ensureChangesCommitted(issue.repository.name, issue.branchName)
-  if (!commitSuccess) {
-    log('❌', `Failed to ensure changes were committed for thread ${threadNumber}`, 'red')
-  }
+  log('✅', `Successfully responded to conversation thread ${threadNumber}`, 'green')
 
   // Determine how to reply based on the last comment in the thread
   let comment
