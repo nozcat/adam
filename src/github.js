@@ -696,7 +696,7 @@ async function pushBranchAndMergeIfNecessary (branchName, repoInfo, issue) {
       // Fetch latest changes
       await git.fetch()
 
-      // Pull latest changes from remote branch
+      // Pull latest changes from remote branch (this will merge into current branch)
       try {
         await git.pull('origin', branchName)
         log('📥', `Pulled latest changes for branch: ${branchName}`, 'blue')
