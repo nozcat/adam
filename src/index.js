@@ -3,7 +3,7 @@ require('dotenv').config()
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
-const { pollLinear, getIssueShortName } = require('./linear')
+const { pollLinear, checkIssueStatus, getIssueShortName } = require('./linear')
 
 /**
  * Main entry point.
@@ -102,7 +102,31 @@ async function processIssue (issue) {
   // Check if the PR already exists.
   const existingPR = await findExistingPR(issue, issue.repository)
   if (existingPR) {
+    // Check if this is a merged PR (race condition detected)
+    if (existingPR.merged) {
+      log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
+      return
+    }
     await processExistingPR(existingPR, issue)
+    return
+  }
+
+  // Before calling Claude, double-check that the issue is still in Todo or In Progress
+  log('🔍', `Double-checking issue status before implementing ${issue.identifier}...`, 'blue')
+  const currentIssue = await checkIssueStatus(issue.id)
+  if (!currentIssue) {
+    log('❌', `Failed to check current status for issue ${issue.identifier}`, 'red')
+    return
+  }
+
+  const currentState = await currentIssue.state
+  if (currentState.name === 'Done') {
+    log('🛑', `Issue ${issue.identifier} has been marked as Done - skipping to avoid race condition`, 'yellow')
+    return
+  }
+
+  if (!['Todo', 'In Progress'].includes(currentState.name)) {
+    log('🛑', `Issue ${issue.identifier} is no longer in Todo or In Progress state (current: ${currentState.name}) - skipping`, 'yellow')
     return
   }
 
@@ -112,6 +136,17 @@ async function processIssue (issue) {
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
     return
+  }
+
+  // Before creating PR, do one final check that the issue hasn't been marked as Done
+  log('🔍', `Final check before creating PR for ${issue.identifier}...`, 'blue')
+  const finalIssue = await checkIssueStatus(issue.id)
+  if (finalIssue) {
+    const finalState = await finalIssue.state
+    if (finalState.name === 'Done') {
+      log('🛑', `Issue ${issue.identifier} was marked as Done during implementation - not creating PR to avoid race condition`, 'yellow')
+      return
+    }
   }
 
   // Create a PR for the issue.
