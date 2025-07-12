@@ -249,7 +249,7 @@ ${issue.description}`
 }
 
 /**
- * Finds an existing pull request for the given issue's branch
+ * Finds an existing pull request for the given issue's branch (open or merged)
  *
  * @param {Object} issue - The issue object containing branch information
  * @param {string} issue.branchName - The name of the branch to search for
@@ -262,16 +262,35 @@ async function findExistingPR (issue, repoInfo) {
   try {
     const { owner, name: repo } = repoInfo
 
-    const { data: pulls } = await octokit.rest.pulls.list({
+    // First check for open PRs
+    const { data: openPulls } = await octokit.rest.pulls.list({
       owner,
       repo,
       head: `${owner}:${issue.branchName}`,
       state: 'open'
     })
 
-    const existingPR = pulls.length > 0 ? pulls[0] : null
+    if (openPulls.length > 0) {
+      return openPulls[0]
+    }
 
-    return existingPR
+    // Check for closed/merged PRs to detect race conditions
+    const { data: closedPulls } = await octokit.rest.pulls.list({
+      owner,
+      repo,
+      head: `${owner}:${issue.branchName}`,
+      state: 'closed'
+    })
+
+    const mergedPR = closedPulls.find(pr => pr.merged)
+    if (mergedPR) {
+      log('⚠️', `Found previously merged PR for issue ${issue.identifier}: ${mergedPR.html_url}`, 'yellow')
+      log('🛑', `Issue ${issue.identifier} appears to have been completed already - skipping work to avoid race condition`, 'yellow')
+      // Return a special object to indicate this case
+      return { merged: true, url: mergedPR.html_url }
+    }
+
+    return null
   } catch (error) {
     log('⚠️', `Failed to check existing branch/PR: ${error.message}`, 'yellow')
     return null
