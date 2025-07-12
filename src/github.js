@@ -6,6 +6,52 @@ const { callClaude } = require('./claude')
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
 
 /**
+ * Handles intelligent merging of a base branch into current branch using Claude.
+ * Preserves the original PR intention while resolving conflicts.
+ *
+ * @param {Object} git - Simple-git instance
+ * @param {string} branchName - The current branch name
+ * @param {string} baseBranch - The base branch to merge from (e.g., 'main')
+ * @param {Object} issue - Issue object containing PR context
+ * @param {string} issue.identifier - Issue identifier
+ * @param {string} issue.title - Issue title
+ * @param {string} issue.description - Issue description
+ * @param {string} repoPath - Path to the repository
+ * @returns {Promise<boolean>} True if merge was successful, false otherwise
+ */
+async function performIntelligentMerge (git, branchName, baseBranch, issue, repoPath) {
+  const mergePrompt = `
+    The branch ${branchName} is behind ${baseBranch} and needs to be updated before pushing.
+    Please merge origin/${baseBranch} into the current branch and resolve any conflicts.
+    
+    IMPORTANT: Preserve the original goal of this PR while merging:
+    ${issue.identifier}: ${issue.title}
+    ${issue.description}
+    
+    Make sure none of the changes being merged in from origin/${baseBranch} conflict with or affect the original goal of this PR.
+    If there are conflicts, resolve them in favor of preserving the original PR functionality.
+    
+    Complete the merge and commit the changes.
+  `
+
+  const claudeSuccess = await callClaude(mergePrompt, repoPath, false)
+  if (!claudeSuccess) {
+    log('❌', `Claude failed to merge ${baseBranch} into ${branchName}`, 'red')
+    return false
+  }
+
+  // Verify the merge was completed
+  const postMergeStatus = await git.status()
+  if (postMergeStatus.conflicted.length > 0) {
+    log('❌', 'Merge conflicts still exist after Claude processing', 'red')
+    return false
+  }
+
+  log('✅', `Successfully merged ${baseBranch} into ${branchName}`, 'green')
+  return true
+}
+
+/**
  * Ensures a GitHub repository exists locally by cloning it if not present.
  * Authenticates using GitHub token and configures git user credentials for commits.
  *
@@ -434,31 +480,9 @@ async function updateExistingPR (issue, repoInfo) {
     if (behindCommits.all.length > 0) {
       log('🔄', `Branch ${issue.branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging...`, 'yellow')
 
-      // Call Claude to handle the merge
-      const mergePrompt = `
-        The branch ${issue.branchName} is behind ${baseBranch} and needs to be updated.
-        Please merge origin/${baseBranch} into the current branch and resolve any conflicts.
-        
-        IMPORTANT: Preserve the original goal of this PR while merging:
-        ${issue.identifier}: ${issue.title}
-        ${issue.description}
-        
-        Make sure none of the changes being merged in from origin/${baseBranch} conflict with or affect the original goal of this PR.
-        If there are conflicts, resolve them in favor of preserving the original PR functionality.
-        
-        Complete the merge and commit the changes.
-      `
-
-      const claudeSuccess = await callClaude(mergePrompt, repoPath, false)
-      if (!claudeSuccess) {
-        log('❌', `Claude failed to merge ${baseBranch} into ${issue.branchName}`, 'red')
-        return false
-      }
-
-      // Verify the merge was completed
-      const postMergeStatus = await git.status()
-      if (postMergeStatus.conflicted.length > 0) {
-        log('❌', 'Merge conflicts still exist after Claude processing', 'red')
+      // Use the shared intelligent merge helper
+      const mergeSuccess = await performIntelligentMerge(git, issue.branchName, baseBranch, issue, repoPath)
+      if (!mergeSuccess) {
         return false
       }
 
@@ -711,35 +735,11 @@ async function pushBranchAndMergeIfNecessary (branchName, repoInfo, issue) {
       if (behindCommits.all.length > 0) {
         log('🔄', `Branch ${branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging intelligently...`, 'yellow')
 
-        // Use Claude to handle the merge intelligently
-        const mergePrompt = `
-          The branch ${branchName} is behind ${baseBranch} and needs to be updated before pushing.
-          Please merge origin/${baseBranch} into the current branch and resolve any conflicts.
-          
-          IMPORTANT: Preserve the original goal of this PR while merging:
-          ${issue.identifier}: ${issue.title}
-          ${issue.description}
-          
-          Make sure none of the changes being merged in from origin/${baseBranch} conflict with or affect the original goal of this PR.
-          If there are conflicts, resolve them in favor of preserving the original PR functionality.
-          
-          Complete the merge and commit the changes.
-        `
-
-        const claudeSuccess = await callClaude(mergePrompt, repoPath, false)
-        if (!claudeSuccess) {
-          log('❌', `Claude failed to merge ${baseBranch} into ${branchName}`, 'red')
+        // Use the shared intelligent merge helper
+        const mergeSuccess = await performIntelligentMerge(git, branchName, baseBranch, issue, repoPath)
+        if (!mergeSuccess) {
           return false
         }
-
-        // Verify the merge was completed
-        const postMergeStatus = await git.status()
-        if (postMergeStatus.conflicted.length > 0) {
-          log('❌', 'Merge conflicts still exist after Claude processing', 'red')
-          return false
-        }
-
-        log('✅', `Successfully merged ${baseBranch} into ${branchName}`, 'green')
       }
 
       // Try pushing again
