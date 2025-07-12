@@ -5,7 +5,7 @@
   "main": "./src/index.js",
   "scripts": {
     "lint": "npx standard --fix",
-    "start": "node ./src/index.js"
+    "start": "node ./src/index.js --mode adam"
   },
   "dependencies": {
     "@linear/sdk": "^46.0.0",
