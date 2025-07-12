@@ -58,6 +58,10 @@ async function getAssignedIssues () {
 async function getRepositoryFromIssue (issue) {
   try {
     const project = await issue.project
+    if (!project) {
+      log('⚠️', `No project assigned to issue ${issue.identifier}`, 'yellow')
+      return null
+    }
     const repository = extractRepository(project.content)
     return repository
   } catch (error) {
