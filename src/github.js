@@ -720,15 +720,6 @@ async function pushBranchAndMergeIfNecessary (branchName, repoInfo, issue) {
       // Fetch latest changes
       await git.fetch()
 
-      // Pull latest changes from remote branch (this will merge into current branch)
-      try {
-        await git.pull('origin', branchName)
-        log('📥', `Pulled latest changes for branch: ${branchName}`, 'blue')
-      } catch (pullError) {
-        // If pull fails, the remote branch might not exist, which is okay
-        log('ℹ️', `Could not pull from remote branch ${branchName}: ${pullError.message}`, 'blue')
-      }
-
       // Check if we need to merge with base branch
       const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
 
