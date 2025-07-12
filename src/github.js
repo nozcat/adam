@@ -226,15 +226,23 @@ async function generatePRDescription (issue, baseBranch, repoPath) {
 
     const commitList = commits.all.map(commit => `- ${commit.hash}`).join('\n')
     const prompt = `
-Generate and return a concise PR description based on these recent commits.
-Focus on what was changed and why. Return only the description without any preamble or explanation.
+You must respond with ONLY a PR description in markdown format. Do not include any conversational text, preambles, or explanations. Start directly with a # Summary section.
+
+Generate a concise PR description based on these recent commits, focusing on what was changed and why.
 
 Recent commits:
 ${commitList}
 
 Issue context:
 ${issue.identifier}: ${issue.title}
-${issue.description}`
+${issue.description}
+
+Required format:
+# Summary
+[Brief description of changes]
+
+## Changes
+[List of key changes made]`
 
     const claudeDescription = await callClaude(prompt, repoPath, false)
     if (claudeDescription && claudeDescription.trim()) {
