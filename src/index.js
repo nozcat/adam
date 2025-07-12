@@ -177,7 +177,7 @@ async function processConversationThreads (conversationThreads, existingPR, issu
       const claudeResponse = await callClaude(prompt, getRepoPath(issue.repository.name))
 
       if (claudeResponse) {
-        await handleSuccessfulClaudeResponse(claudeResponse, lastComment, existingPR, issue, i + 1)
+        await respondToConversationThread(claudeResponse, lastComment, existingPR, issue, i + 1)
       } else {
         log('❌', `Claude returned empty response for thread ${i + 1}`, 'red')
       }
@@ -188,7 +188,7 @@ async function processConversationThreads (conversationThreads, existingPR, issu
 }
 
 /**
- * Handle a successful Claude response by committing changes, posting replies, and pushing to remote.
+ * Respond to a conversation thread by committing changes, posting replies, and pushing to remote.
  *
  * @param {string} claudeResponse - The response from Claude.
  * @param {Object} lastComment - The last comment in the thread.
@@ -196,7 +196,7 @@ async function processConversationThreads (conversationThreads, existingPR, issu
  * @param {Object} issue - The issue object.
  * @param {number} threadNumber - The thread number for logging.
  */
-async function handleSuccessfulClaudeResponse (claudeResponse, lastComment, existingPR, issue, threadNumber) {
+async function respondToConversationThread (claudeResponse, lastComment, existingPR, issue, threadNumber) {
   log('✅', `Successfully processed conversation thread ${threadNumber} with Claude`, 'green')
 
   // Verify that changes were committed and retry if needed
