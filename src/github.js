@@ -226,8 +226,7 @@ async function generatePRDescription (issue, baseBranch, repoPath) {
 
     const commitList = commits.all.map(commit => `- ${commit.hash}`).join('\n')
     const prompt = `
-You are writing a PR description. Write a concise description based on these recent commits.
-Focus on what was changed and why. Do not include any introductory text, preambles, or explanations - start directly with the description content.
+Write a concise PR description based on these recent commits. Start directly with "# Summary" - do not include any introductory text, preambles, explanations, or meta-commentary about generating the description.
 
 Recent commits:
 ${commitList}
