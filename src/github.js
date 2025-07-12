@@ -459,7 +459,6 @@ async function updateExistingPR (issue, repoInfo) {
   try {
     const repoPath = getRepoPath(repoInfo.name)
     const git = simpleGit(repoPath)
-    const baseBranch = process.env.BASE_BRANCH || 'main'
 
     // Checkout the PR branch
     await git.checkout(issue.branchName)
@@ -469,33 +468,20 @@ async function updateExistingPR (issue, repoInfo) {
     await git.pull('origin', issue.branchName)
     log('📥', `Pulled latest changes for branch: ${issue.branchName}`, 'blue')
 
-    // Check if branch is behind main
-    await git.fetch()
+    // Use the shared merge helper function
+    const mergeResult = await mergeOriginIfNecessary(git, issue.branchName, issue, repoPath)
+    if (!mergeResult.success) {
+      return false
+    }
 
-    // Get commits that are in origin/baseBranch but not in current branch (HEAD)
-    // This tells us if the current branch is behind the base branch
-    // We use origin/baseBranch to ensure we're comparing against the latest remote commits
-    const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
-
-    if (behindCommits.all.length > 0) {
-      log('🔄', `Branch ${issue.branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging...`, 'yellow')
-
-      // Use the shared intelligent merge helper
-      const mergeSuccess = await performIntelligentMerge(git, issue.branchName, baseBranch, issue, repoPath)
-      if (!mergeSuccess) {
-        return false
-      }
-
-      // Push the updated branch
+    // Only push if there were changes (merge occurred)
+    if (mergeResult.merged) {
       await git.push('origin', issue.branchName)
       log('📤', `Pushed updated branch ${issue.branchName} to remote`, 'green')
-
-      log('✅', `Successfully updated PR for ${issue.identifier}`, 'green')
-      return true
-    } else {
-      log('✅', `Branch ${issue.branchName} is up to date with ${baseBranch}`, 'green')
-      return true
     }
+
+    log('✅', `Successfully updated PR for ${issue.identifier}`, 'green')
+    return true
   } catch (error) {
     log('❌', `Failed to update existing PR: ${error.message}`, 'red')
     return false
@@ -685,6 +671,43 @@ async function pushBranch (branchName, repoInfo) {
 }
 
 /**
+ * Merges origin base branch into current branch if necessary.
+ * Checks if the current branch is behind the base branch and performs intelligent merge if needed.
+ *
+ * @param {Object} git - Simple-git instance
+ * @param {string} branchName - The current branch name
+ * @param {Object} issue - The issue object containing PR context for intelligent merging
+ * @param {string} issue.identifier - The issue identifier
+ * @param {string} issue.title - The issue title
+ * @param {string} issue.description - The issue description
+ * @param {string} repoPath - Path to the repository
+ * @returns {Promise<Object>} - Object with success (boolean) and merged (boolean) indicating if merge occurred
+ */
+async function mergeOriginIfNecessary (git, branchName, issue, repoPath) {
+  const baseBranch = process.env.BASE_BRANCH || 'main'
+
+  // Fetch latest changes
+  await git.fetch()
+
+  // Check if we need to merge with base branch
+  const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
+
+  if (behindCommits.all.length > 0) {
+    log('🔄', `Branch ${branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging intelligently...`, 'yellow')
+
+    // Use the shared intelligent merge helper
+    const mergeSuccess = await performIntelligentMerge(git, branchName, baseBranch, issue, repoPath)
+    if (!mergeSuccess) {
+      return { success: false, merged: false }
+    }
+    return { success: true, merged: true }
+  } else {
+    log('✅', `Branch ${branchName} is up to date with ${baseBranch}`, 'green')
+    return { success: true, merged: false }
+  }
+}
+
+/**
  * Pushes the current branch to remote and merges if push fails due to conflicts.
  * Uses intelligent merging that preserves the original PR intention.
  *
@@ -715,22 +738,11 @@ async function pushBranchAndMergeIfNecessary (branchName, repoInfo, issue) {
     try {
       const repoPath = getRepoPath(repoInfo.name)
       const git = simpleGit(repoPath)
-      const baseBranch = process.env.BASE_BRANCH || 'main'
 
-      // Fetch latest changes
-      await git.fetch()
-
-      // Check if we need to merge with base branch
-      const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
-
-      if (behindCommits.all.length > 0) {
-        log('🔄', `Branch ${branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging intelligently...`, 'yellow')
-
-        // Use the shared intelligent merge helper
-        const mergeSuccess = await performIntelligentMerge(git, branchName, baseBranch, issue, repoPath)
-        if (!mergeSuccess) {
-          return false
-        }
+      // Use the shared merge helper function
+      const mergeResult = await mergeOriginIfNecessary(git, branchName, issue, repoPath)
+      if (!mergeResult.success) {
+        return false
       }
 
       // Try pushing again
