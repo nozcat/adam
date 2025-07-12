@@ -3,3 +3,4 @@
 - Avoid overly-nested logic in functions. Extract complex nested sections into separate helper functions to improve readability and maintainability.
 - At the end of a task, always run `npm run lint` and fix all linter warnings and errors.
 - When making changes that affect how users run or deploy the application, always update the README.md file and any other relevant documentation to reflect the changes.
+- Before merging any changes, review all other files (including README and dockerfiles) to ensure they are up-to-date and reflect any changes made.
