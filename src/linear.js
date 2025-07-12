@@ -27,7 +27,7 @@ async function pollLinear () {
 }
 
 /**
- * Get all assigned issues.
+ * Get all assigned issues that are Todo or In Progress.
  *
  * @returns {Promise<Array>} A list of issues.
  */
@@ -38,7 +38,7 @@ async function getAssignedIssues () {
     const issues = await linearClient.issues({
       filter: {
         assignee: { id: { eq: user.id } },
-        state: { name: { nin: ['Backlog', 'Done', 'Canceled', 'Duplicate'] } }
+        state: { name: { in: ['Todo', 'In Progress'] } }
       }
     })
 
@@ -86,6 +86,22 @@ function extractRepository (content) {
 }
 
 /**
+ * Re-fetch a single issue to check its current status
+ *
+ * @param {string} issueId - The Linear issue ID to check
+ * @returns {Promise<Object|null>} The issue object or null if not found/error
+ */
+async function checkIssueStatus (issueId) {
+  try {
+    const issue = await linearClient.issue(issueId)
+    return issue
+  } catch (error) {
+    log('❌', `Error checking issue status for ${issueId}: ${error.message}`, 'red')
+    return null
+  }
+}
+
+/**
  * Get the short name of an issue for display.
  *
  * @param {Object} issue - The issue to get the short name from.
@@ -98,5 +114,6 @@ function getIssueShortName (issue) {
 
 module.exports = {
   pollLinear,
+  checkIssueStatus,
   getIssueShortName
 }
