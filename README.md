@@ -174,6 +174,7 @@ This tells Adam which GitHub repository to work with for issues in that project.
 - **Assign issues to Adam** in Linear (assign to the user whose LINEAR_API_KEY is being used)
 - **Provide detailed descriptions** - Issues should be well-described with clear requirements
 - **Ensure proper status** - Issues should be in an active state (not Backlog, Done, Canceled, or Duplicate)
+- **One issue per PR** - Each Linear issue should result in exactly one pull request. If an issue is too large, break it down into smaller sub-issues rather than creating multiple PRs for a single issue
 
 ### 3. Automated Implementation
 
