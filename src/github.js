@@ -660,6 +660,99 @@ async function pushBranch (branchName, repoInfo) {
   }
 }
 
+/**
+ * Pushes the current branch to remote and merges if push fails due to conflicts.
+ * Uses intelligent merging that preserves the original PR intention.
+ *
+ * @param {string} branchName - The name of the branch to push
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.name - Repository name
+ * @param {Object} issue - The issue object containing PR context for intelligent merging
+ * @param {string} issue.identifier - The issue identifier
+ * @param {string} issue.title - The issue title
+ * @param {string} issue.description - The issue description
+ * @returns {Promise<boolean>} - True if push was successful (with or without merge), false otherwise
+ */
+async function pushBranchAndMergeIfNecessary (branchName, repoInfo, issue) {
+  log('📤', `Attempting to push branch ${branchName} to remote`, 'blue')
+
+  try {
+    const repoPath = getRepoPath(repoInfo.name)
+    const git = simpleGit(repoPath)
+
+    // First, try a simple push
+    await git.push('origin', branchName)
+    log('✅', `Successfully pushed branch ${branchName} to remote`, 'green')
+    return true
+  } catch (pushError) {
+    log('⚠️', `Push failed: ${pushError.message}`, 'yellow')
+    log('🔄', 'Attempting to pull and merge before pushing again...', 'blue')
+
+    try {
+      const repoPath = getRepoPath(repoInfo.name)
+      const git = simpleGit(repoPath)
+      const baseBranch = process.env.BASE_BRANCH || 'main'
+
+      // Fetch latest changes
+      await git.fetch()
+
+      // Pull latest changes from remote branch
+      try {
+        await git.pull('origin', branchName)
+        log('📥', `Pulled latest changes for branch: ${branchName}`, 'blue')
+      } catch (pullError) {
+        // If pull fails, the remote branch might not exist, which is okay
+        log('ℹ️', `Could not pull from remote branch ${branchName}: ${pullError.message}`, 'blue')
+      }
+
+      // Check if we need to merge with base branch
+      const behindCommits = await git.log([`HEAD..origin/${baseBranch}`])
+
+      if (behindCommits.all.length > 0) {
+        log('🔄', `Branch ${branchName} is behind ${baseBranch} by ${behindCommits.all.length} commits, merging intelligently...`, 'yellow')
+
+        // Use Claude to handle the merge intelligently
+        const mergePrompt = `
+          The branch ${branchName} is behind ${baseBranch} and needs to be updated before pushing.
+          Please merge origin/${baseBranch} into the current branch and resolve any conflicts.
+          
+          IMPORTANT: Preserve the original goal of this PR while merging:
+          ${issue.identifier}: ${issue.title}
+          ${issue.description}
+          
+          Make sure none of the changes being merged in from origin/${baseBranch} conflict with or affect the original goal of this PR.
+          If there are conflicts, resolve them in favor of preserving the original PR functionality.
+          
+          Complete the merge and commit the changes.
+        `
+
+        const claudeSuccess = await callClaude(mergePrompt, repoPath, false)
+        if (!claudeSuccess) {
+          log('❌', `Claude failed to merge ${baseBranch} into ${branchName}`, 'red')
+          return false
+        }
+
+        // Verify the merge was completed
+        const postMergeStatus = await git.status()
+        if (postMergeStatus.conflicted.length > 0) {
+          log('❌', 'Merge conflicts still exist after Claude processing', 'red')
+          return false
+        }
+
+        log('✅', `Successfully merged ${baseBranch} into ${branchName}`, 'green')
+      }
+
+      // Try pushing again
+      await git.push('origin', branchName)
+      log('✅', `Successfully pushed branch ${branchName} to remote after merge`, 'green')
+      return true
+    } catch (mergeError) {
+      log('❌', `Failed to merge and push branch ${branchName}: ${mergeError.message}`, 'red')
+      return false
+    }
+  }
+}
+
 module.exports = {
   ensureRepositoryExists,
   checkoutBranch,
@@ -671,5 +764,6 @@ module.exports = {
   postPRComment,
   postReviewCommentReply,
   addCommentReaction,
-  pushBranch
+  pushBranch,
+  pushBranchAndMergeIfNecessary
 }
