@@ -115,7 +115,8 @@ async function processIssue (issue) {
   log('🚀', `Marking issue ${issue.identifier} as In Progress...`, 'blue')
   const updateSuccess = await updateIssueToInProgress(issue)
   if (!updateSuccess) {
-    log('⚠️', `Failed to update issue ${issue.identifier} to In Progress, but continuing...`, 'yellow')
+    log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
+    return
   }
 
   // Before calling Claude, double-check that the issue is still in Todo or In Progress
