@@ -111,7 +111,7 @@ async function processIssue (issue) {
     return
   }
 
-  // Before calling Claude, double-check that the issue is still in Todo or In Progress
+  // Before calling Claude, double-check that the issue is still in Todo, In Progress, or In Review
   log('🔍', `Double-checking issue status before implementing ${issue.identifier}...`, 'blue')
   const currentIssue = await checkIssueStatus(issue.id)
   if (!currentIssue) {
@@ -125,8 +125,8 @@ async function processIssue (issue) {
     return
   }
 
-  if (!['Todo', 'In Progress'].includes(currentState.name)) {
-    log('🛑', `Issue ${issue.identifier} is no longer in Todo or In Progress state (current: ${currentState.name}) - skipping`, 'yellow')
+  if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
+    log('🛑', `Issue ${issue.identifier} is no longer in Todo, In Progress, or In Review state (current: ${currentState.name}) - skipping`, 'yellow')
     return
   }
 

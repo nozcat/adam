@@ -62,7 +62,7 @@ async function isIssueBlocked (issue) {
 }
 
 /**
- * Get all assigned issues that are Todo or In Progress.
+ * Get all assigned issues that are Todo, In Progress, or in Review.
  *
  * @returns {Promise<Array>} A list of issues.
  */
@@ -73,7 +73,7 @@ async function getAssignedIssues () {
     const issues = await linearClient.issues({
       filter: {
         assignee: { id: { eq: user.id } },
-        state: { name: { in: ['Todo', 'In Progress'] } }
+        state: { name: { in: ['Todo', 'In Progress', 'In Review'] } }
       }
     })
 
