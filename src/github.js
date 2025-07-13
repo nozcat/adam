@@ -137,6 +137,65 @@ async function checkBranchExists (branchName, repoPath) {
 }
 
 /**
+ * Detects and clears any incomplete merge state that could interfere with branch operations.
+ * This resolves errors like "needs merge" or "you need to resolve your current index first".
+ *
+ * @param {Object} git - SimpleGit instance
+ * @param {string} repoPath - Path to the repository
+ * @returns {Promise<boolean>} - True if merge state was cleared, false if none existed
+ */
+async function clearMergeState (git, repoPath) {
+  try {
+    const fs = require('fs')
+    const path = require('path')
+
+    // Check for merge-related files that indicate an incomplete merge
+    const mergeFiles = [
+      path.join(repoPath, '.git/MERGE_HEAD'),
+      path.join(repoPath, '.git/MERGE_MSG'),
+      path.join(repoPath, '.git/CHERRY_PICK_HEAD'),
+      path.join(repoPath, '.git/REVERT_HEAD')
+    ]
+
+    const mergeInProgress = mergeFiles.some(file => fs.existsSync(file))
+
+    if (mergeInProgress) {
+      log('🔄', 'Detected incomplete merge state, clearing...', 'yellow')
+
+      // Abort any in-progress merge operations
+      try {
+        await git.raw(['merge', '--abort'])
+        log('✅', 'Successfully aborted incomplete merge', 'green')
+      } catch (error) {
+        // If merge --abort fails, try other cleanup methods
+        try {
+          await git.raw(['cherry-pick', '--abort'])
+        } catch (cherryPickError) {
+          // Ignore if no cherry-pick in progress
+        }
+
+        try {
+          await git.raw(['revert', '--abort'])
+        } catch (revertError) {
+          // Ignore if no revert in progress
+        }
+
+        // Reset to a clean state
+        await git.reset(['--hard', 'HEAD'])
+        log('✅', 'Successfully reset to clean state', 'green')
+      }
+
+      return true
+    }
+
+    return false
+  } catch (error) {
+    log('⚠️', `Error clearing merge state: ${error.message}`, 'yellow')
+    return false
+  }
+}
+
+/**
  * Checks out an existing Git branch or creates a new one if it doesn't exist.
  * If the branch exists, it switches to it. If not, it creates a new branch from
  * the base branch (main by default) and switches to it.
@@ -157,6 +216,10 @@ async function checkBranchExists (branchName, repoPath) {
 async function checkoutBranch (branchName, repoPath) {
   try {
     const git = simpleGit(repoPath)
+
+    // Clear any incomplete merge state that could interfere with branch operations
+    await clearMergeState(git, repoPath)
+
     const exists = await checkBranchExists(branchName, repoPath)
     if (exists) {
       log('🌿', `Branch ${branchName} already exists, checking out...`, 'yellow')
