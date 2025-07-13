@@ -13,6 +13,7 @@ services:
       - DEBUG=${DEBUG:-false}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
       # Mount a volume for persistent git repositories
       - adam_repos:/app/repos

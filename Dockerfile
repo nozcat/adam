@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     lsb-release \
+    expect \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 24+ from NodeSource
@@ -79,19 +80,54 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Create a script to handle environment variables and start the application
+# Create a script to handle environment variables, Claude auth, and start the application
 RUN echo '#!/bin/bash\n\
+# Colors for output\n\
+GREEN="\\033[0;32m"\n\
+YELLOW="\\033[1;33m"\n\
+BLUE="\\033[0;34m"\n\
+NC="\\033[0m"\n\
+\n\
+print_info() {\n\
+    echo -e "${BLUE}[INFO]${NC} $1"\n\
+}\n\
+\n\
+print_success() {\n\
+    echo -e "${GREEN}[SUCCESS]${NC} $1"\n\
+}\n\
+\n\
+print_warning() {\n\
+    echo -e "${YELLOW}[WARNING]${NC} $1"\n\
+}\n\
+\n\
 # Check if .env file exists in mounted volume\n\
 if [ -f /app/config/.env ]; then\n\
     cp /app/config/.env /app/.env\n\
-    echo "Environment file copied from mounted volume"\n\
+    print_success "Environment file copied from mounted volume"\n\
 else\n\
-    echo "No .env file found in /app/config/. Using environment variables from Docker Compose or system."\n\
-    echo "If you need to use a .env file, mount it to /app/config/.env"\n\
-    echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
+    print_info "No .env file found in /app/config/. Using environment variables from Docker Compose or system."\n\
+    print_info "If you need to use a .env file, mount it to /app/config/.env"\n\
+fi\n\
+\n\
+# Check Claude authentication\n\
+print_info "Checking Claude Code authentication..."\n\
+if timeout 10s claude -p "echo test" --json >/dev/null 2>&1; then\n\
+    print_success "Claude is authenticated and ready!"\n\
+elif [ ! -z "$ANTHROPIC_API_KEY" ]; then\n\
+    print_info "Attempting authentication with ANTHROPIC_API_KEY..."\n\
+    if timeout 15s claude -p "echo authenticated" --json >/dev/null 2>&1; then\n\
+        print_success "Successfully authenticated using ANTHROPIC_API_KEY!"\n\
+    else\n\
+        print_warning "Environment variable authentication failed"\n\
+        print_warning "Manual authentication required. Run: docker exec -it adam-agent /app/scripts/authorize-claude.sh"\n\
+    fi\n\
+else\n\
+    print_warning "Claude is not authenticated and no ANTHROPIC_API_KEY provided"\n\
+    print_warning "Manual authentication required. Run: docker exec -it adam-agent /app/scripts/authorize-claude.sh"\n\
 fi\n\
 \n\
 # Start the application\n\
+print_info "Starting Adam..."\n\
 npm run start' > /app/start.sh && chmod +x /app/start.sh
 
 # Set the default command

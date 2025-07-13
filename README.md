@@ -60,7 +60,9 @@ Adam can be run in a Docker container for easier deployment and isolation.
 
 ### Prerequisites
 
-1. **Claude Code Authentication**: Claude Code must be authenticated before running Adam in Docker. This cannot be done inside the Docker container itself.
+1. **Claude Code Authentication**: Adam now supports automated Claude Code authentication using either:
+   - **Automatic (Recommended)**: Set `ANTHROPIC_API_KEY` in your `.env` file for fully automatic authentication
+   - **Assisted Interactive**: Use the provided automation scripts for streamlined manual authentication
 
 2. **Environment File**: Create a `.env` file with your configuration (see above for required variables).
 
@@ -80,7 +82,21 @@ The easiest way to run Adam with Docker is using Docker Compose:
    ```
 
 3. **Authenticate Claude Code**:
-   Connect to the running container to authenticate:
+
+   **Option A: Automatic Authentication (Recommended)**
+   
+   If you have set `ANTHROPIC_API_KEY` in your `.env` file, authentication will happen automatically when the container starts. No manual steps required!
+
+   **Option B: Automated Interactive Authentication**
+   
+   Use the provided helper script for streamlined authentication:
+   ```bash
+   ./docker-authorize-claude.sh
+   ```
+   
+   **Option C: Manual Authentication**
+   
+   Connect to the running container to authenticate manually:
    ```bash
    docker-compose exec adam claude
    # Then type:
@@ -143,20 +159,54 @@ Then manually:
 2. Authenticate Claude Code: `claude` then `/login`
 3. Start Adam: `npm run start`
 
+### Claude Authorization Scripts
+
+Adam includes automation scripts to streamline Claude Code authentication:
+
+#### `docker-authorize-claude.sh`
+A helper script to manage Claude authentication from outside the container:
+
+```bash
+# Authorize Claude (starts container if needed)
+./docker-authorize-claude.sh
+
+# Check authentication status
+./docker-authorize-claude.sh check
+
+# Show container and auth status
+./docker-authorize-claude.sh status
+```
+
+#### `scripts/authorize-claude.sh`
+An internal script that runs inside the container:
+
+```bash
+# Run full authorization process
+docker exec -it adam-agent /app/scripts/authorize-claude.sh
+
+# Check authentication only
+docker exec adam-agent /app/scripts/authorize-claude.sh --check
+
+# Try environment variable auth only
+docker exec adam-agent /app/scripts/authorize-claude.sh --env-only
+```
+
 ### Docker Features
 
 - **Ubuntu-based** with Node.js 24+ and common developer tools
 - **Claude Code pre-installed** globally
 - **Automatic repository cloning** from GitHub
 - **Environment variable handling** via mounted `.env` file
-- **Interactive authentication** support for Claude Code
+- **Automated Claude authentication** with API key or interactive assistance
+- **Expect-based automation** for streamlined interactive authentication
 
 ### Important Notes
 
-- **Authentication Requirement**: Claude Code authentication is required and must be done interactively after starting the container
+- **Authentication Options**: Claude Code can be authenticated automatically with `ANTHROPIC_API_KEY` or using the provided automation scripts
 - **Volume Mount**: Your `.env` file must be mounted to `/app/config/.env` in the container
 - **Network Access**: The container needs internet access to communicate with Linear, GitHub, and Claude APIs
 - **Persistent Data**: Consider mounting a volume for git repositories if you want to persist cloned repos between container restarts
+- **API Key Security**: Store your `ANTHROPIC_API_KEY` securely and never commit it to version control
 
 ## Workflow for Interacting with Adam
 
