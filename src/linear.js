@@ -17,6 +17,7 @@ async function pollLinear () {
 
     for (const issue of issues) {
       issue.repository = await getRepositoryFromIssue(issue)
+      issue.branchName = generateBranchName(issue)
     }
 
     return issues
@@ -106,6 +107,90 @@ async function checkIssueStatus (issueId) {
 }
 
 /**
+ * Generate a branch name from the Linear issue.
+ *
+ * @param {Object} issue - The Linear issue object.
+ * @returns {string} The generated branch name.
+ */
+function generateBranchName (issue) {
+  // Convert identifier to lowercase and replace hyphens if needed
+  const identifier = issue.identifier.toLowerCase()
+
+  // Clean up the title - remove special characters and convert to kebab-case
+  const cleanTitle = issue.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+    .substring(0, 50) // Limit length to keep branch name reasonable
+
+  return `adam/${identifier}-${cleanTitle}`
+}
+
+/**
+ * Update an issue to "In Progress" state if it's currently in "Todo" state.
+ *
+ * @param {Object} issue - The Linear issue object.
+ * @returns {Promise<boolean>} True if update was successful or not needed, false if failed.
+ */
+async function updateIssueToInProgress (issue) {
+  try {
+    // Check current state
+    const currentState = await issue.state
+    if (currentState.name !== 'Todo') {
+      log('ℹ️', `Issue ${issue.identifier} is already in "${currentState.name}" state, not updating`, 'blue')
+      return true
+    }
+
+    // Get the "In Progress" state ID
+    const inProgressStateId = await getInProgressStateId()
+    if (!inProgressStateId) {
+      log('❌', 'Could not find "In Progress" state ID', 'red')
+      return false
+    }
+
+    // Update the issue state
+    await linearClient.updateIssue(issue.id, {
+      stateId: inProgressStateId
+    })
+
+    log('✅', `Updated issue ${issue.identifier} from "Todo" to "In Progress"`, 'green')
+    return true
+  } catch (error) {
+    log('❌', `Failed to update issue ${issue.identifier} to In Progress: ${error.message}`, 'red')
+    return false
+  }
+}
+
+/**
+ * Get the ID of the "In Progress" workflow state.
+ *
+ * @returns {Promise<string|null>} The state ID or null if not found.
+ */
+async function getInProgressStateId () {
+  try {
+    const states = await linearClient.workflowStates({
+      filter: { name: { eq: 'In Progress' } }
+    })
+
+    if (states.nodes.length === 0) {
+      log('❌', 'No "In Progress" state found in workflow', 'red')
+      return null
+    }
+
+    if (states.nodes.length > 1) {
+      log('⚠️', `Found ${states.nodes.length} "In Progress" states, using the first one`, 'yellow')
+    }
+
+    return states.nodes[0].id
+  } catch (error) {
+    log('❌', `Error getting In Progress state ID: ${error.message}`, 'red')
+    return null
+  }
+}
+
+/**
  * Get the short name of an issue for display.
  *
  * @param {Object} issue - The issue to get the short name from.
@@ -119,5 +204,6 @@ function getIssueShortName (issue) {
 module.exports = {
   pollLinear,
   checkIssueStatus,
-  getIssueShortName
+  getIssueShortName,
+  updateIssueToInProgress
 }
