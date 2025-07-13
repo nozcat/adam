@@ -10,6 +10,15 @@ echo "📍 Repository URL: $REPO_URL"
 echo "📁 Repository directory: $REPO_DIR"
 echo "⏰ Update check interval: ${UPDATE_INTERVAL} seconds"
 
+# Set up signal handlers for graceful container shutdown
+cleanup() {
+    echo "📡 Container received shutdown signal, cleaning up..."
+    stop_application
+    exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
 # Function to clone or update repository
 update_repository() {
     echo "🔄 Checking for repository updates..."
@@ -83,13 +92,32 @@ start_application() {
     echo "🆔 Application PID: $APP_PID"
 }
 
-# Function to stop the application
+# Function to stop the application gracefully
 stop_application() {
     if [ ! -z "$APP_PID" ]; then
-        echo "🛑 Stopping application (PID: $APP_PID)..."
-        kill $APP_PID 2>/dev/null
+        echo "🛑 Gracefully stopping application (PID: $APP_PID)..."
+        
+        # Send SIGTERM for graceful shutdown
+        kill -TERM $APP_PID 2>/dev/null
+        
+        # Wait up to 30 seconds for graceful shutdown
+        local timeout=30
+        local count=0
+        
+        while [ $count -lt $timeout ]; do
+            if ! kill -0 $APP_PID 2>/dev/null; then
+                echo "✅ Application stopped gracefully"
+                return 0
+            fi
+            sleep 1
+            count=$((count + 1))
+        done
+        
+        # If still running after timeout, force kill
+        echo "⚠️  Application didn't stop gracefully, forcing shutdown..."
+        kill -KILL $APP_PID 2>/dev/null
         wait $APP_PID 2>/dev/null
-        echo "✅ Application stopped"
+        echo "✅ Application stopped (forced)"
     fi
 }
 

@@ -5,11 +5,17 @@ const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
 const { pollLinear, checkIssueStatus, getIssueShortName } = require('./linear')
 
+// Global flag to control graceful shutdown
+let isShuttingDown = false
+
 /**
  * Main entry point.
  */
 async function main () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
+
+  // Set up graceful shutdown handlers
+  setupGracefulShutdown()
 
   // Get poll interval from environment variable, default to 30 seconds
   const pollIntervalSeconds = parseInt(process.env.POLL_INTERVAL) || 30
@@ -18,7 +24,8 @@ async function main () {
   log('⏱️', `Poll interval set to ${pollIntervalSeconds} seconds`, 'blue')
 
   // Main worker loop. We poll for actions at the configured interval.
-  while (true) {
+  // eslint-disable-next-line no-unmodified-loop-condition
+  while (!isShuttingDown) {
     const start = Date.now()
 
     try {
@@ -30,10 +37,53 @@ async function main () {
     const elapsed = Date.now() - start
     const remaining = pollIntervalMs - elapsed
 
-    if (remaining > 0) {
-      await new Promise(resolve => setTimeout(resolve, remaining))
+    if (remaining > 0 && !isShuttingDown) {
+      await new Promise(resolve => {
+        const timeout = setTimeout(resolve, remaining)
+        // Allow early exit during shutdown
+        const checkShutdown = setInterval(() => {
+          if (isShuttingDown) {
+            clearTimeout(timeout)
+            clearInterval(checkShutdown)
+            resolve()
+          }
+        }, 100)
+      })
     }
   }
+
+  log('👋', 'Adam has shut down gracefully', 'green')
+  process.exit(0)
+}
+
+/**
+ * Set up graceful shutdown signal handlers.
+ */
+function setupGracefulShutdown () {
+  const handleShutdown = (signal) => {
+    log('📡', `Received ${signal}, initiating graceful shutdown...`, 'yellow')
+    isShuttingDown = true
+  }
+
+  // Handle SIGTERM (from Docker stop, kill, etc.)
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'))
+
+  // Handle SIGINT (Ctrl+C)
+  process.on('SIGINT', () => handleShutdown('SIGINT'))
+
+  // Handle uncaught exceptions gracefully
+  process.on('uncaughtException', (error) => {
+    log('❌', `Uncaught exception: ${error.message}`, 'red')
+    isShuttingDown = true
+    process.exit(1)
+  })
+
+  // Handle unhandled promise rejections gracefully
+  process.on('unhandledRejection', (reason, promise) => {
+    log('❌', `Unhandled rejection at ${promise}: ${reason}`, 'red')
+    isShuttingDown = true
+    process.exit(1)
+  })
 }
 
 /**
