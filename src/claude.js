@@ -60,6 +60,7 @@ async function callClaude (prompt, dir) {
 
     let lineBuffer = ''
     let result
+    let stderrData = ''
 
     // Handle NDJSON (newline-delimited JSON)
     claude.stdout.on('data', (data) => {
@@ -75,6 +76,7 @@ async function callClaude (prompt, dir) {
 
     claude.stderr.on('data', (data) => {
       const chunk = data.toString()
+      stderrData += chunk
       process.stderr.write(chalk.red(chunk))
     })
 
@@ -92,8 +94,19 @@ async function callClaude (prompt, dir) {
           resolve(result.result)
         }
       } else {
-        log('❌', `Claude Code failed with exit code: ${code}`, 'red')
-        reject(new Error(`Claude Code failed with exit code: ${code}`))
+        // Check if this is a Claude usage limit error
+        if (stderrData.includes('Claude AI usage limit reached')) {
+          const match = stderrData.match(/Claude AI usage limit reached\|(\d+)/)
+          const resetTime = match ? new Date(parseInt(match[1]) * 1000) : null
+          const resetTimeStr = resetTime ? resetTime.toLocaleString() : 'unknown time'
+
+          const errorMessage = `Claude AI usage limit has been reached. The limit will reset at ${resetTimeStr}. Please try again later.`
+          log('⏳', errorMessage, 'yellow')
+          reject(new Error(errorMessage))
+        } else {
+          log('❌', `Claude Code failed with exit code: ${code}`, 'red')
+          reject(new Error(`Claude Code failed with exit code: ${code}`))
+        }
       }
     })
 
