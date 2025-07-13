@@ -17,7 +17,6 @@ async function pollLinear () {
 
     for (const issue of issues) {
       issue.repository = await getRepositoryFromIssue(issue)
-      issue.branchName = generateBranchName(issue)
     }
 
     return issues
