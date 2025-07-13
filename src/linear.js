@@ -152,28 +152,6 @@ async function checkIssueStatus (issueId) {
 }
 
 /**
- * Generate a branch name from the Linear issue.
- *
- * @param {Object} issue - The Linear issue object.
- * @returns {string} The generated branch name.
- */
-function generateBranchName (issue) {
-  // Convert identifier to lowercase and replace hyphens if needed
-  const identifier = issue.identifier.toLowerCase()
-
-  // Clean up the title - remove special characters and convert to kebab-case
-  const cleanTitle = issue.title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
-    .substring(0, 50) // Limit length to keep branch name reasonable
-
-  return `adam/${identifier}-${cleanTitle}`
-}
-
-/**
  * Update an issue to "In Progress" state if it's currently in "Todo" state.
  *
  * @param {Object} issue - The Linear issue object.
