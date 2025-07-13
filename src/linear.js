@@ -27,6 +27,41 @@ async function pollLinear () {
 }
 
 /**
+ * Check if an issue is blocked by other issues.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<boolean>} True if the issue is blocked, false otherwise.
+ */
+async function isIssueBlocked (issue) {
+  try {
+    // Get all inverse relations (where this issue is the target of a relation)
+    const inverseRelations = await issue.inverseRelations()
+
+    // Check if any inverse relation is of type "blocks"
+    for (const relation of inverseRelations.nodes || []) {
+      if (relation.type === 'blocks') {
+        // This issue is blocked by another issue
+        // Check if the blocking issue is still open
+        const blockingIssue = await relation.issue
+        const blockingState = await blockingIssue.state
+
+        // If the blocking issue is not done, this issue is still blocked
+        if (blockingState.name !== 'Done') {
+          log('🚧', `Issue ${issue.identifier} is blocked by ${blockingIssue.identifier} (${blockingState.name})`, 'yellow')
+          return true
+        }
+      }
+    }
+
+    return false
+  } catch (error) {
+    log('⚠️', `Error checking if issue ${issue.identifier} is blocked: ${error.message}`, 'yellow')
+    // If we can't check, err on the side of caution and don't block the issue
+    return false
+  }
+}
+
+/**
  * Get all assigned issues that are Todo or In Progress.
  *
  * @returns {Promise<Array>} A list of issues.
@@ -42,7 +77,18 @@ async function getAssignedIssues () {
       }
     })
 
-    return issues.nodes
+    // Filter out issues that are blocked by other issues
+    const unblockedIssues = []
+    for (const issue of issues.nodes) {
+      const isBlocked = await isIssueBlocked(issue)
+      if (!isBlocked) {
+        unblockedIssues.push(issue)
+      } else {
+        log('🛑', `Skipping blocked issue ${issue.identifier}`, 'yellow')
+      }
+    }
+
+    return unblockedIssues
   } catch (error) {
     log('❌', `Error getting assigned issues: ${error.message}`, 'red')
     return []
