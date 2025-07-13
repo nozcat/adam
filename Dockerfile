@@ -65,11 +65,7 @@ RUN mkdir -p /app/config
 
 # Create application directory structure
 RUN mkdir -p /app/adam
-
-# Copy only package files for dependency installation
-COPY package*.json /app/adam/
 WORKDIR /app/adam
-RUN npm install
 
 # Copy startup script template
 COPY docker-entrypoint.sh /app/
