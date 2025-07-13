@@ -45,6 +45,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
    DEBUG=false
    POLL_INTERVAL=30
    REPOS_DIR=./repos
+   AUTO_UPDATE_INTERVAL=300
    ```
 
 3. **Start Adam**
@@ -147,15 +148,31 @@ Then manually:
 
 - **Ubuntu-based** with Node.js 24+ and common developer tools
 - **Claude Code pre-installed** globally
-- **Automatic repository cloning** from GitHub
+- **Automatic repository cloning** from GitHub at runtime
+- **Auto-update functionality** - Automatically pulls and applies code updates from the repository
 - **Environment variable handling** via mounted `.env` file
 - **Interactive authentication** support for Claude Code
+
+### Auto-Update Functionality
+
+When running in Docker, Adam includes automatic update capabilities:
+
+- **Runtime Repository Cloning**: Instead of copying code at build time, Adam clones the repository when the container starts
+- **Periodic Update Checks**: Every 5 minutes (configurable with `AUTO_UPDATE_INTERVAL` environment variable), Adam checks for updates
+- **Automatic Restart**: When updates are detected, Adam automatically restarts itself with the new code
+- **Zero-Downtime Updates**: The update process is designed to minimize service interruption
+
+To configure the update interval:
+```env
+AUTO_UPDATE_INTERVAL=300  # Check for updates every 5 minutes (in seconds)
+```
 
 ### Important Notes
 
 - **Authentication Requirement**: Claude Code authentication is required and must be done interactively after starting the container
 - **Volume Mount**: Your `.env` file must be mounted to `/app/config/.env` in the container
 - **Network Access**: The container needs internet access to communicate with Linear, GitHub, and Claude APIs
+- **Auto-Update**: When running in Docker, Adam will automatically update itself from the GitHub repository
 - **Persistent Data**: Consider mounting a volume for git repositories if you want to persist cloned repos between container restarts
 
 ## Workflow for Interacting with Adam

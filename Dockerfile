@@ -63,12 +63,17 @@ WORKDIR /app
 # Create a directory for environment configuration
 RUN mkdir -p /app/config
 
-# Copy package files and install dependencies
-COPY package*.json ./
+# Create application directory structure
+RUN mkdir -p /app/adam
+
+# Copy only package files for dependency installation
+COPY package*.json /app/adam/
+WORKDIR /app/adam
 RUN npm install
 
-# Copy the rest of the application
-COPY . .
+# Copy startup script template
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Create repos directory and set permissions for appuser
 RUN mkdir -p /app/repos && chown -R appuser:appuser /app/repos
@@ -79,20 +84,5 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Create a script to handle environment variables and start the application
-RUN echo '#!/bin/bash\n\
-# Check if .env file exists in mounted volume\n\
-if [ -f /app/config/.env ]; then\n\
-    cp /app/config/.env /app/.env\n\
-    echo "Environment file copied from mounted volume"\n\
-else\n\
-    echo "No .env file found in /app/config/. Using environment variables from Docker Compose or system."\n\
-    echo "If you need to use a .env file, mount it to /app/config/.env"\n\
-    echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
-fi\n\
-\n\
-# Start the application\n\
-npm run start' > /app/start.sh && chmod +x /app/start.sh
-
 # Set the default command
-CMD ["/app/start.sh"]
+CMD ["/app/docker-entrypoint.sh"]
