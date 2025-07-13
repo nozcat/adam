@@ -152,6 +152,58 @@ async function checkIssueStatus (issueId) {
 }
 
 /**
+ * Get comments for a Linear issue to include in conversation thread.
+ *
+ * @param {Object} issue - The Linear issue object.
+ * @returns {Promise<Array>} A list of comments for the issue.
+ */
+async function getIssueComments (issue) {
+  try {
+    const comments = await linearClient.comments({
+      filter: {
+        issue: { id: { eq: issue.id } }
+      },
+      orderBy: 'createdAt'
+    })
+
+    return comments.nodes || []
+  } catch (error) {
+    log('⚠️', `Error getting comments for issue ${issue.identifier}: ${error.message}`, 'yellow')
+    return []
+  }
+}
+
+/**
+ * Format comments into a readable conversation thread.
+ *
+ * @param {Array} comments - Array of comment objects from Linear.
+ * @returns {Promise<string>} Formatted conversation thread string.
+ */
+async function formatConversationThread (comments) {
+  if (!comments || comments.length === 0) {
+    return ''
+  }
+
+  const formattedComments = []
+
+  for (const comment of comments) {
+    try {
+      const user = await comment.user
+      const createdAt = new Date(comment.createdAt).toLocaleString()
+
+      formattedComments.push(`**${user.name}** (${createdAt}):
+${comment.body}`)
+    } catch (error) {
+      log('⚠️', `Error formatting comment: ${error.message}`, 'yellow')
+      formattedComments.push(`**Unknown User**:
+${comment.body}`)
+    }
+  }
+
+  return formattedComments.join('\n\n---\n\n')
+}
+
+/**
  * Get the short name of an issue for display.
  *
  * @param {Object} issue - The issue to get the short name from.
@@ -165,5 +217,7 @@ function getIssueShortName (issue) {
 module.exports = {
   pollLinear,
   checkIssueStatus,
-  getIssueShortName
+  getIssueShortName,
+  getIssueComments,
+  formatConversationThread
 }
