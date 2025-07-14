@@ -98,7 +98,7 @@ Both Adam and Eve modes can be run in Docker containers for easier deployment an
 
 ### Docker Compose (Recommended)
 
-The easiest way to run Adam with Docker is using Docker Compose:
+The easiest way to run Adam with Docker is using Docker Compose. By default, it will start 4 Adam agents (adam1-adam4) and one Eve agent:
 
 1. **Prepare your environment file**:
    ```bash
@@ -106,26 +106,43 @@ The easiest way to run Adam with Docker is using Docker Compose:
    # Edit .env with your actual API keys and configuration
    ```
 
-2. **Start Adam with Docker Compose**:
+2. **Start the agents with Docker Compose**:
    ```bash
    docker-compose up -d
    ```
+   This will start:
+   - 4 Adam agents (adam1, adam2, adam3, adam4) running continuously
+   - 1 Eve agent (eve) which exits immediately (still under development)
 
-3. **Authenticate Claude Code**:
-   Connect to the running container to authenticate:
+3. **Authenticate Claude Code for each Adam agent**:
+   Connect to each running Adam container to authenticate:
    ```bash
-   docker-compose exec adam claude
-   # Then type:
-   /login
-   # Follow the authentication prompts
+   docker-compose exec adam1 claude
+   # Then type: /login and follow the authentication prompts
+   
+   docker-compose exec adam2 claude
+   # Then type: /login and follow the authentication prompts
+   
+   docker-compose exec adam3 claude
+   # Then type: /login and follow the authentication prompts
+   
+   docker-compose exec adam4 claude
+   # Then type: /login and follow the authentication prompts
    ```
 
 4. **View logs**:
    ```bash
-   docker-compose logs -f adam
+   # View logs for all agents
+   docker-compose logs -f
+   
+   # View logs for specific agents
+   docker-compose logs -f adam1
+   docker-compose logs -f adam2
+   docker-compose logs -f adam3
+   docker-compose logs -f adam4
    ```
 
-5. **Stop Adam**:
+5. **Stop all agents**:
    ```bash
    docker-compose down
    ```
