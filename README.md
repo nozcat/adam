@@ -83,17 +83,10 @@ The easiest way to run Adam with Docker is using Docker Compose:
 
    **For development** (source code mounted as volume for live updates):
    ```bash
-   docker-compose -f docker-compose.dev.yml up -d
+   SOURCE_MOUNT=. docker-compose up -d
    ```
-
-   Alternatively, you can enable development mode in the main docker-compose.yml by uncommenting the volume mount lines:
-   ```yaml
-   volumes:
-     - adam_repos:/app/repos
-     # Uncomment these lines for development mode:
-     - .:/app
-     - /app/node_modules
-   ```
+   
+   This will mount your current source code directory into the container, enabling live updates without rebuilding the image.
 
 3. **Authenticate Claude Code**:
    Connect to the running container to authenticate:
@@ -118,23 +111,21 @@ The easiest way to run Adam with Docker is using Docker Compose:
 
 For development purposes, you can mount the source code as a volume instead of copying it during the Docker build. This allows you to make code changes and restart the container without rebuilding the image.
 
-#### Using docker-compose.dev.yml
-
-The easiest approach is to use the provided development Docker Compose file:
-
 ```bash
-# Start Adam in development mode
-docker-compose -f docker-compose.dev.yml up -d
+# Start Adam in development mode (with source code mounted)
+SOURCE_MOUNT=. docker-compose up -d
 
 # Make your code changes, then restart to apply them
-docker-compose -f docker-compose.dev.yml restart adam
+docker-compose restart adam
 
 # View logs
-docker-compose -f docker-compose.dev.yml logs -f adam
+docker-compose logs -f adam
 
 # Stop development environment
-docker-compose -f docker-compose.dev.yml down
+docker-compose down
 ```
+
+When source code is mounted, the container will automatically detect this and install/update dependencies as needed.
 
 #### Manual Docker with Volume Mounting
 

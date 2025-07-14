@@ -16,9 +16,11 @@ services:
     volumes:
       # Mount a volume for persistent git repositories
       - adam_repos:/app/repos
-      # Uncomment the lines below for development mode (source code mounting):
-      # - .:/app
-      # - /app/node_modules
+      # Mount source code if available (for development with live updates)
+      # When a volume is mounted here, it will override the copied source code
+      - ${SOURCE_MOUNT:-.}:/app
+      # Exclude node_modules to avoid conflicts between host and container
+      - /app/node_modules
     stdin_open: true
     tty: true
     networks:

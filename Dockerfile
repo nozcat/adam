@@ -91,6 +91,13 @@ else\n\
     echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
 fi\n\
 \n\
+# Check if source code is mounted (indicated by package.json being newer than container build)\n\
+if [ -f /app/package.json ] && [ /app/package.json -nt /app/start.sh ]; then\n\
+    echo "Source code volume detected. Installing/updating dependencies..."\n\
+    npm install --silent\n\
+    echo "Dependencies updated from mounted source code"\n\
+fi\n\
+\n\
 # Start the application\n\
 npm run start' > /app/start.sh && chmod +x /app/start.sh
 
