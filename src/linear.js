@@ -33,24 +33,6 @@ function getAgentLabelName (agentId) {
   return `agent:${agentId}`
 }
 
-/**
- * Generate a branch name from an issue.
- *
- * @param {Object} issue - The Linear issue object
- * @returns {string} The branch name
- */
-function generateBranchName (issue) {
-  const username = getEnvVar('GITHUB_USERNAME') || 'adam'
-  const identifier = issue.identifier.toLowerCase()
-  const titleSlug = issue.title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .substring(0, 50)
-    .replace(/-+$/, '')
-
-  return `${username}/${identifier}-${titleSlug}`
-}
 
 /**
  * Poll Linear for assigned issues.
@@ -66,7 +48,6 @@ async function pollLinear () {
     const availableIssues = []
     for (const issue of issues) {
       issue.repository = await getRepositoryFromIssue(issue)
-      issue.branchName = generateBranchName(issue)
 
       // Check if this issue is already being processed by another agent
       const isLocked = await isIssueLockedByAnotherAgent(issue)
