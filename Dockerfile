@@ -91,11 +91,11 @@ else\n\
     echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
 fi\n\
 \n\
-# Determine which agent to start based on AGENT_MODE environment variable\n\
-AGENT_MODE=${AGENT_MODE:-adam}\n\
-echo "Starting $AGENT_MODE agent..."\n\
+# Determine which agent to start based on MODE environment variable\n\
+MODE=${MODE:-adam}\n\
+echo "Starting $MODE agent..."\n\
 \n\
-if [ "$AGENT_MODE" = "eve" ]; then\n\
+if [ "$MODE" = "eve" ]; then\n\
     npm run eve\n\
 else\n\
     npm run adam\n\
