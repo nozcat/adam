@@ -5,7 +5,7 @@ const { log } = require('./util')
 /**
  * Main entry point for Eve agent.
  */
-async function main () {
+async function runEve () {
   log('🌙', 'Starting Eve - AI agent mode', 'green')
 
   // Eve agent doesn't do anything yet, just log and exit
@@ -14,4 +14,4 @@ async function main () {
   process.exit(0)
 }
 
-main()
+module.exports = { runEve }

@@ -2,24 +2,13 @@ require('dotenv').config()
 
 const { log } = require('./util')
 const { runAdam } = require('./adam')
+const { runEve } = require('./eve')
 
 /**
  * Get the mode from environment variable, defaulting to 'adam'.
  */
 function getMode () {
   return process.env.MODE || 'adam'
-}
-
-/**
- * Run Eve agent.
- */
-async function runEve () {
-  log('🌙', 'Starting Eve - AI agent mode', 'green')
-
-  // Eve agent doesn't do anything yet, just log and exit
-  log('💤', 'Eve agent is not yet implemented. Exiting...', 'blue')
-
-  process.exit(0)
 }
 
 /**
