@@ -403,10 +403,11 @@ async function lockIssue (issue) {
     const updatedIssue = await linearClient.issue(issue.id)
     const updatedLabels = await updatedIssue.labels()
     const updatedLabelNames = updatedLabels?.nodes ? updatedLabels.nodes.map(label => label.name) : []
+    log('🔒', `Issue ${issue.identifier} has labels: ${updatedLabelNames}`, 'blue')
 
     // Check for other agent labels (excluding our own)
     const otherAgentLabels = updatedLabelNames.filter(name =>
-      name.startsWith('agent-') && name !== labelName
+      name.startsWith('agent:') && name !== labelName
     )
 
     if (otherAgentLabels.length > 0) {
