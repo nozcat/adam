@@ -16,7 +16,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
 
 Adam is built with a mode-based architecture that allows for future extensibility:
 
-- **Adam Mode** (`MODE=adam`): The main Linear-to-GitHub automation agent (default mode)
+- **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
 - Additional modes can be added in the future for different workflows
 
 When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
