@@ -33,7 +33,6 @@ function getAgentLabelName (agentId) {
   return `agent:${agentId}`
 }
 
-
 /**
  * Poll Linear for assigned issues.
  *
