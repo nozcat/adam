@@ -2,7 +2,7 @@ require('dotenv').config()
 
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath, getEnvVar } = require('./util')
-const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
+const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary, cloneReposFromEnv, isRepoAllowed } = require('./github')
 const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress, lockIssue, unlockIssue, agentId } = require('./linear')
 
 /**
@@ -11,6 +11,9 @@ const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, forma
 async function runAdam () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
   log('🤖', `Agent ID: ${agentId}`, 'blue')
+
+  // Clone repositories specified in REPOS environment variable
+  await cloneReposFromEnv()
 
   // Get poll interval from environment variable, default to 30 seconds
   const pollIntervalSeconds = parseInt(process.env.POLL_INTERVAL) || 30
@@ -124,6 +127,13 @@ async function processIssue (issue) {
   if (!issue.repository?.owner || !issue.repository?.name) {
     log('⚠️', `No repository found for issue ${issue.identifier}. Skipping...`, 'yellow')
     return false
+  }
+
+  // Check if repository is in the allowed REPOS list
+  if (!isRepoAllowed(issue.repository.owner, issue.repository.name)) {
+    const repoString = `${issue.repository.owner}/${issue.repository.name}`
+    log('❌', `Repository ${repoString} is not in the allowed REPOS list for issue ${issue.identifier}. Skipping...`, 'red')
+    throw new Error(`Repository ${repoString} is not in the allowed REPOS list. Please add it to the REPOS environment variable.`)
   }
 
   // Check if there's work to do before attempting to lock
