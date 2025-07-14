@@ -276,21 +276,6 @@ async function respondToConversationThread (claudeResponse, lastComment, existin
   if (comment) {
     log('💬', `Successfully posted Claude response for thread ${threadNumber} as ${lastComment.type} ${lastComment.type === 'review' ? 'reply' : 'quoted comment'} to GitHub PR`, 'green')
 
-    // Check issue status before pushing changes
-    log('🔍', `Checking issue status before pushing changes for thread ${threadNumber}...`, 'blue')
-    const currentIssue = await checkIssueStatus(issue.id)
-    if (currentIssue) {
-      const currentState = await currentIssue.state
-      if (currentState.name === 'Cancelled' || currentState.name === 'Canceled') {
-        log('🛑', `Issue ${issue.identifier} was cancelled - not pushing changes for thread ${threadNumber}`, 'yellow')
-        return
-      }
-      if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
-        log('🛑', `Issue ${issue.identifier} is no longer in a valid state (current: ${currentState.name}) - not pushing changes for thread ${threadNumber}`, 'yellow')
-        return
-      }
-    }
-
     // Push the branch to remote after making changes, merging if necessary
     const pushSuccess = await pushBranchAndMergeIfNecessary(issue.branchName, issue.repository, issue)
     if (pushSuccess) {
