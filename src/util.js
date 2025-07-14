@@ -7,6 +7,59 @@ const fs = require('fs')
 
 const DEBUG = process.env.DEBUG === 'true'
 
+/**
+ * Get the mode from environment variable, defaulting to 'adam'.
+ * @returns {string} The current mode ('adam' or 'eve')
+ */
+function getMode () {
+  return process.env.MODE || 'adam'
+}
+
+/**
+ * Gets environment variable with mode-specific suffix (_ADAM or _EVE) if mode is specified,
+ * otherwise falls back to the base variable name.
+ * @param {string} baseVarName - The base environment variable name
+ * @returns {string|undefined} The environment variable value
+ */
+function getEnvVar (baseVarName) {
+  const mode = getMode()
+  const modeSpecificVar = `${baseVarName}_${mode.toUpperCase()}`
+
+  return process.env[modeSpecificVar] || process.env[baseVarName]
+}
+
+/**
+ * Gets the LINEAR_API_KEY with mode-specific suffix if available
+ * @returns {string|undefined} The Linear API key
+ */
+function getLinearApiKey () {
+  return getEnvVar('LINEAR_API_KEY')
+}
+
+/**
+ * Gets the GITHUB_TOKEN with mode-specific suffix if available
+ * @returns {string|undefined} The GitHub token
+ */
+function getGithubToken () {
+  return getEnvVar('GITHUB_TOKEN')
+}
+
+/**
+ * Gets the GITHUB_USERNAME with mode-specific suffix if available
+ * @returns {string|undefined} The GitHub username
+ */
+function getGithubUsername () {
+  return getEnvVar('GITHUB_USERNAME')
+}
+
+/**
+ * Gets the GITHUB_EMAIL with mode-specific suffix if available
+ * @returns {string|undefined} The GitHub email
+ */
+function getGithubEmail () {
+  return getEnvVar('GITHUB_EMAIL')
+}
+
 // Configure marked to use terminal renderer
 marked.use(markedTerminal())
 
@@ -41,4 +94,14 @@ function log (emoji, message, color) {
   console.log()
 }
 
-module.exports = { log, DEBUG, getRepoPath }
+module.exports = {
+  log,
+  DEBUG,
+  getRepoPath,
+  getMode,
+  getEnvVar,
+  getLinearApiKey,
+  getGithubToken,
+  getGithubUsername,
+  getGithubEmail
+}

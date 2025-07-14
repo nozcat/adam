@@ -1,9 +1,9 @@
 const { Octokit } = require('@octokit/rest')
 const simpleGit = require('simple-git')
-const { log, getRepoPath } = require('./util')
+const { log, getRepoPath, getGithubToken, getGithubUsername, getGithubEmail } = require('./util')
 const { callClaude } = require('./claude')
 
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
+const octokit = new Octokit({ auth: getGithubToken() })
 
 /**
  * Handles intelligent merging of a base branch into current branch using Claude.
@@ -82,9 +82,9 @@ async function ensureRepositoryExists (repoInfo) {
   }
 
   try {
-    const username = process.env.GITHUB_USERNAME
-    const email = process.env.GITHUB_EMAIL
-    const token = process.env.GITHUB_TOKEN
+    const username = getGithubUsername()
+    const email = getGithubEmail()
+    const token = getGithubToken()
 
     if (!username || !email || !token) {
       log('❌', 'GitHub credentials not configured. Please set GITHUB_USERNAME, GITHUB_EMAIL, and GITHUB_TOKEN in your environment.', 'red')

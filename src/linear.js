@@ -1,8 +1,8 @@
 const { LinearClient } = require('@linear/sdk')
-const { log } = require('./util')
+const { log, getLinearApiKey } = require('./util')
 
 // Initialize the Linear client.
-const linearClient = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+const linearClient = new LinearClient({ apiKey: getLinearApiKey() })
 
 /**
  * Poll Linear for assigned issues.
