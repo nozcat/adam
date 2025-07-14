@@ -1,8 +1,8 @@
-# Adam & Eve - AI Agent Platform
+# Adam AI - AI Agent Platform
 
-## What are Adam & Eve?
+## What is Adam AI?
 
-This platform provides multiple AI agent modes for different purposes:
+Adam AI is an AI agent platform that provides multiple AI modes for different development purposes:
 
 ### Adam - Developer AI Agent (Default)
 
@@ -22,7 +22,7 @@ Eve is an AI agent mode that reviews existing PRs and provides comments. It focu
 
 ## Architecture
 
-Adam & Eve are built with a mode-based architecture that allows for extensibility:
+Adam AI is built with a mode-based architecture that allows for extensibility:
 
 - **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
 - **Eve Mode** (`MODE=eve`): An experimental AI agent mode currently under development
@@ -88,7 +88,7 @@ MODE=eve npm run start
 
 ## Docker Setup
 
-Both Adam and Eve agents can be run in Docker containers for easier deployment and isolation.
+Both Adam and Eve modes can be run in Docker containers for easier deployment and isolation.
 
 ### Prerequisites
 
