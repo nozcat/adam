@@ -6,10 +6,10 @@ services:
     environment:
       # Override with environment variables if needed
       - MODE=${MODE:-adam}
-      - LINEAR_API_KEY=${LINEAR_API_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_USERNAME=${GITHUB_USERNAME}
-      - GITHUB_EMAIL=${GITHUB_EMAIL}
+      - LINEAR_API_KEY=${LINEAR_API_KEY_ADAM:-${LINEAR_API_KEY}}
+      - GITHUB_TOKEN=${GITHUB_TOKEN_ADAM:-${GITHUB_TOKEN}}
+      - GITHUB_USERNAME=${GITHUB_USERNAME_ADAM:-${GITHUB_USERNAME}}
+      - GITHUB_EMAIL=${GITHUB_EMAIL_ADAM:-${GITHUB_EMAIL}}
       - BASE_BRANCH=${BASE_BRANCH:-main}
       - DEBUG=${DEBUG:-false}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
@@ -29,10 +29,10 @@ services:
     environment:
       # Override with environment variables if needed
       - MODE=eve
-      - LINEAR_API_KEY=${LINEAR_API_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - GITHUB_USERNAME=${GITHUB_USERNAME}
-      - GITHUB_EMAIL=${GITHUB_EMAIL}
+      - LINEAR_API_KEY=${LINEAR_API_KEY_EVE:-${LINEAR_API_KEY}}
+      - GITHUB_TOKEN=${GITHUB_TOKEN_EVE:-${GITHUB_TOKEN}}
+      - GITHUB_USERNAME=${GITHUB_USERNAME_EVE:-${GITHUB_USERNAME}}
+      - GITHUB_EMAIL=${GITHUB_EMAIL_EVE:-${GITHUB_EMAIL}}
       - BASE_BRANCH=${BASE_BRANCH:-main}
       - DEBUG=${DEBUG:-false}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
