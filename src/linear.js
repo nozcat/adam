@@ -455,14 +455,6 @@ async function checkForExistingAgentLabels (issue) {
 }
 
 /**
- * Verify that we have exclusive ownership of the lock by checking that only our agent label exists.
- *
- * @param {Object} issue - The issue to check.
- * @param {string} expectedLabelName - The expected agent label name.
- * @returns {Promise<{success: boolean, reason?: string}>} Lock verification result.
- */
-
-/**
  * Find or create a label with the given name.
  *
  * @param {string} labelName - The name of the label to find or create.
