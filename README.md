@@ -1,6 +1,10 @@
-# Adam - Developer AI Agent
+# Adam & Eve - AI Agent Platform
 
-## What is Adam?
+## What are Adam & Eve?
+
+This platform provides multiple AI agent modes for different purposes:
+
+### Adam - Developer AI Agent (Default)
 
 Adam is a developer AI agent that automates the software development workflow by:
 
@@ -12,7 +16,11 @@ Adam is a developer AI agent that automates the software development workflow by
 
 Adam runs in a continuous loop, checking for new issues and PR feedback at configurable intervals (default: 30 seconds), making it a fully automated development assistant.
 
-## Starting Adam
+### Eve - AI Agent (Coming Soon)
+
+Eve is an AI agent mode that is currently under development. It will provide additional AI capabilities beyond the developer workflow automation that Adam provides.
+
+## Starting the Agents
 
 ### Requirements
 
@@ -47,16 +55,25 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
    REPOS_DIR=./repos
    ```
 
-3. **Start Adam**
+3. **Start an agent**
+   
+   **Adam (default developer mode):**
    ```bash
    npm run start
+   # or
+   npm run adam
+   ```
+   
+   **Eve (experimental mode):**
+   ```bash
+   npm run eve
    ```
 
-Adam will begin polling Linear for assigned issues and processing them automatically.
+Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development.
 
 ## Docker Setup
 
-Adam can be run in a Docker container for easier deployment and isolation.
+Both Adam and Eve agents can be run in Docker containers for easier deployment and isolation.
 
 ### Prerequisites
 

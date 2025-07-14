@@ -5,7 +5,9 @@
   "main": "./src/index.js",
   "scripts": {
     "lint": "npx standard --fix",
-    "start": "node ./src/index.js"
+    "start": "node ./src/index.js",
+    "adam": "node ./src/index.js",
+    "eve": "node ./src/eve.js"
   },
   "dependencies": {
     "@linear/sdk": "^46.0.0",

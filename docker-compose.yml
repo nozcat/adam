@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     environment:
       # Override with environment variables if needed
+      - AGENT_MODE=adam
       - LINEAR_API_KEY=${LINEAR_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_USERNAME=${GITHUB_USERNAME}
@@ -21,8 +22,33 @@ services:
     networks:
       - adam-network
 
+  eve:
+    build: .
+    container_name: eve-agent
+    restart: "no"  # Don't restart since eve exits immediately
+    environment:
+      # Override with environment variables if needed
+      - AGENT_MODE=eve
+      - LINEAR_API_KEY=${LINEAR_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_USERNAME=${GITHUB_USERNAME}
+      - GITHUB_EMAIL=${GITHUB_EMAIL}
+      - BASE_BRANCH=${BASE_BRANCH:-main}
+      - DEBUG=${DEBUG:-false}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - REPOS_DIR=${REPOS_DIR:-./repos}
+    volumes:
+      # Mount a volume for persistent git repositories
+      - eve_repos:/app/repos
+    stdin_open: true
+    tty: true
+    networks:
+      - adam-network
+
 volumes:
   adam_repos:
+    driver: local
+  eve_repos:
     driver: local
 
 networks:

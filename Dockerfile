@@ -91,8 +91,15 @@ else\n\
     echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
 fi\n\
 \n\
-# Start the application\n\
-npm run start' > /app/start.sh && chmod +x /app/start.sh
+# Determine which agent to start based on AGENT_MODE environment variable\n\
+AGENT_MODE=${AGENT_MODE:-adam}\n\
+echo "Starting $AGENT_MODE agent..."\n\
+\n\
+if [ "$AGENT_MODE" = "eve" ]; then\n\
+    npm run eve\n\
+else\n\
+    npm run adam\n\
+fi' > /app/start.sh && chmod +x /app/start.sh
 
 # Set the default command
 CMD ["/app/start.sh"]
