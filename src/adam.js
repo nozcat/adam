@@ -183,21 +183,6 @@ async function processIssue (issue) {
 async function processExistingPR (existingPR, issue) {
   log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
 
-  // Check issue status before proceeding with any updates
-  log('🔍', `Checking issue status before updating existing PR for ${issue.identifier}...`, 'blue')
-  const currentIssue = await checkIssueStatus(issue.id)
-  if (currentIssue) {
-    const currentState = await currentIssue.state
-    if (currentState.name === 'Cancelled' || currentState.name === 'Canceled') {
-      log('🛑', `Issue ${issue.identifier} was cancelled - not updating existing PR`, 'yellow')
-      return
-    }
-    if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
-      log('🛑', `Issue ${issue.identifier} is no longer in a valid state (current: ${currentState.name}) - not updating existing PR`, 'yellow')
-      return
-    }
-  }
-
   // Update the existing PR by merging main
   const updateSuccess = await updateExistingPR(issue, issue.repository)
   if (!updateSuccess) {
