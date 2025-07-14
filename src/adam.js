@@ -3,7 +3,7 @@ require('dotenv').config()
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
-const { pollLinear, checkIssueStatus, getIssueShortName } = require('./linear')
+const { pollLinear, checkIssueStatus, getIssueShortName, updateIssueToInProgress } = require('./linear')
 
 /**
  * Main entry point for Adam mode.
@@ -111,7 +111,15 @@ async function processIssue (issue) {
     return
   }
 
-  // Before calling Claude, double-check that the issue is still in Todo or In Progress
+  // Mark the issue as "In Progress" if it's currently in "Todo" state
+  log('🚀', `Marking issue ${issue.identifier} as In Progress...`, 'blue')
+  const updateSuccess = await updateIssueToInProgress(issue)
+  if (!updateSuccess) {
+    log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
+    return
+  }
+
+  // Before calling Claude, double-check that the issue is still in Todo, In Progress, or In Review
   log('🔍', `Double-checking issue status before implementing ${issue.identifier}...`, 'blue')
   const currentIssue = await checkIssueStatus(issue.id)
   if (!currentIssue) {
@@ -125,8 +133,8 @@ async function processIssue (issue) {
     return
   }
 
-  if (!['Todo', 'In Progress'].includes(currentState.name)) {
-    log('🛑', `Issue ${issue.identifier} is no longer in Todo or In Progress state (current: ${currentState.name}) - skipping`, 'yellow')
+  if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
+    log('🛑', `Issue ${issue.identifier} is no longer in Todo, In Progress, or In Review state (current: ${currentState.name}) - skipping`, 'yellow')
     return
   }
 
