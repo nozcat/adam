@@ -156,17 +156,10 @@ async function processIssue (issue) {
   const finalIssue = await checkIssueStatus(issue.id)
   if (finalIssue) {
     const finalState = await finalIssue.state
-    if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled') {
+    if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled' || finalState.name === 'Duplicate') {
       log('🛑', `Issue ${issue.identifier} was marked as ${finalState.name} during implementation - not creating PR to avoid race condition`, 'yellow')
       return true // Still counts as finding work
     }
-  }
-
-  // Check for duplicate PR one more time before creating
-  const duplicatePR = await findExistingPR(issue, issue.repository)
-  if (duplicatePR) {
-    log('🛑', `Found duplicate PR for ${issue.identifier} - not creating another PR to avoid duplicates`, 'yellow')
-    return true // Still counts as finding work
   }
 
   // Create a PR for the issue.
