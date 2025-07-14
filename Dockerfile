@@ -67,6 +67,10 @@ RUN mkdir -p /app/config
 COPY package*.json ./
 RUN npm install
 
+# Copy Python requirements and install dependencies
+COPY requirements.txt ./
+RUN pip3 install -r requirements.txt
+
 # Copy the rest of the application
 COPY . .
 

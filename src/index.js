@@ -3,7 +3,8 @@ require('dotenv').config()
 const { log, getMode } = require('./util')
 const { runAdam } = require('./adam')
 const { runEve } = require('./eve')
-const { runApi } = require('./api')
+const { spawn } = require('child_process')
+const path = require('path')
 
 /**
  * Main entry point.
@@ -16,7 +17,24 @@ async function main () {
   } else if (mode === 'eve') {
     await runEve()
   } else if (mode === 'api') {
-    await runApi()
+    // Launch the Python FastAPI server
+    const pythonScript = path.join(__dirname, 'api.py')
+    const pythonProcess = spawn('python3', [pythonScript], {
+      stdio: 'inherit',
+      env: process.env
+    })
+
+    pythonProcess.on('error', (err) => {
+      log('❌', `Failed to start API server: ${err.message}`, 'red')
+      process.exit(1)
+    })
+
+    pythonProcess.on('exit', (code) => {
+      if (code !== 0) {
+        log('❌', `API server exited with code ${code}`, 'red')
+        process.exit(code)
+      }
+    })
   } else {
     log('❌', `Error: Unknown mode "${mode}"`, 'red')
     console.log('Available modes: adam, eve, api')
