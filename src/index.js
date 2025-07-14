@@ -3,7 +3,7 @@ require('dotenv').config()
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
-const { pollLinear, checkIssueStatus, getIssueShortName } = require('./linear')
+const { pollLinear, checkIssueStatus, getIssueShortName, updateIssueToInProgress } = require('./linear')
 
 /**
  * Main entry point.
@@ -108,6 +108,14 @@ async function processIssue (issue) {
       return
     }
     await processExistingPR(existingPR, issue)
+    return
+  }
+
+  // Mark the issue as "In Progress" if it's currently in "Todo" state
+  log('🚀', `Marking issue ${issue.identifier} as In Progress...`, 'blue')
+  const updateSuccess = await updateIssueToInProgress(issue)
+  if (!updateSuccess) {
+    log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
     return
   }
 
