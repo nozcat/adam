@@ -477,7 +477,7 @@ async function findOrCreateLabel (labelName) {
       description: `Temporary label indicating this issue is being processed by ${agentId}`
     })
 
-    return newLabel.issueLabel.id
+    return (await newLabel.issueLabel).id
   } catch (error) {
     log('❌', `Error finding or creating label ${labelName}: ${error.message}`, 'red')
     return null
