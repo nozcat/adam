@@ -52,7 +52,11 @@ async function performActions () {
   printIssues(issues)
 
   for (const issue of issues) {
-    await processIssue(issue)
+    const foundWork = await processIssue(issue)
+    if (foundWork) {
+      log('🔄', 'Found work to do - restarting to refresh issues', 'blue')
+      return
+    }
   }
 }
 
@@ -75,6 +79,7 @@ function printIssues (issues) {
  * Process an issue.
  *
  * @param {Object} issue - The issue to process.
+ * @returns {Promise<boolean>} True if work was found and processed, false otherwise.
  */
 async function processIssue (issue) {
   log('🔄', `Processing ${getIssueShortName(issue)}`, 'blue')
@@ -82,21 +87,21 @@ async function processIssue (issue) {
   // Check we have a known repository for the issue.
   if (!issue.repository?.owner || !issue.repository?.name) {
     log('⚠️', `No repository found for issue ${issue.identifier}. Skipping...`, 'yellow')
-    return
+    return false
   }
 
   // Clone the repository if it doesn't exist.
   const repoExists = await ensureRepositoryExists(issue.repository)
   if (!repoExists) {
     log('❌', `Failed to ensure repository exists for issue ${issue.identifier}`, 'red')
-    return
+    return false
   }
 
   // Checkout the branch for the issue.
   const checkedOutBranch = await checkoutBranch(issue.branchName, getRepoPath(issue.repository.name))
   if (!checkedOutBranch) {
     log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
-    return
+    return false
   }
 
   // Check if the PR already exists.
@@ -105,10 +110,10 @@ async function processIssue (issue) {
     // Check if this is a merged PR (race condition detected)
     if (existingPR.merged) {
       log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
-      return
+      return false
     }
-    await processExistingPR(existingPR, issue)
-    return
+    const foundWork = await processExistingPR(existingPR, issue)
+    return foundWork
   }
 
   // Mark the issue as "In Progress" if it's currently in "Todo" state
@@ -116,7 +121,7 @@ async function processIssue (issue) {
   const updateSuccess = await updateIssueToInProgress(issue)
   if (!updateSuccess) {
     log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
-    return
+    return false
   }
 
   // Before calling Claude, double-check that the issue is still in Todo, In Progress, or In Review
@@ -124,18 +129,18 @@ async function processIssue (issue) {
   const currentIssue = await checkIssueStatus(issue.id)
   if (!currentIssue) {
     log('❌', `Failed to check current status for issue ${issue.identifier}`, 'red')
-    return
+    return false
   }
 
   const currentState = await currentIssue.state
   if (currentState.name === 'Done') {
     log('🛑', `Issue ${issue.identifier} has been marked as Done - skipping to avoid race condition`, 'yellow')
-    return
+    return false
   }
 
   if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
     log('🛑', `Issue ${issue.identifier} is no longer in Todo, In Progress, or In Review state (current: ${currentState.name}) - skipping`, 'yellow')
-    return
+    return false
   }
 
   // Call Claude to generate the code.
@@ -143,7 +148,7 @@ async function processIssue (issue) {
   const claudeSuccess = await callClaude(prompt, getRepoPath(issue.repository.name))
   if (!claudeSuccess) {
     log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
-    return
+    return true // Still counts as finding work even if it failed
   }
 
   // Before creating PR, do one final check that the issue is still valid for PR creation
@@ -153,7 +158,7 @@ async function processIssue (issue) {
     const finalState = await finalIssue.state
     if (finalState.name === 'Done') {
       log('🛑', `Issue ${issue.identifier} was marked as Done during implementation - not creating PR to avoid race condition`, 'yellow')
-      return
+      return true // Still counts as finding work
     }
     if (finalState.name === 'Cancelled' || finalState.name === 'Canceled') {
       log('🛑', `Issue ${issue.identifier} was cancelled - not creating PR or pushing changes`, 'yellow')
@@ -172,6 +177,8 @@ async function processIssue (issue) {
   } else {
     log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
   }
+
+  return true // We found work and processed it
 }
 
 /**
@@ -179,6 +186,7 @@ async function processIssue (issue) {
  *
  * @param {Object} existingPR - The existing PR object.
  * @param {Object} issue - The issue object.
+ * @returns {Promise<boolean>} True if work was found and processed, false otherwise.
  */
 async function processExistingPR (existingPR, issue) {
   log('📋', `PR already exists for issue ${issue.identifier}: ${existingPR.html_url}`, 'yellow')
@@ -213,8 +221,11 @@ async function processExistingPR (existingPR, issue) {
 
       // Process all conversation threads
       await processConversationThreads(conversationThreads, existingPR, issue)
+      return true // Found work (conversation threads to process)
     }
   }
+
+  return false // No work found
 }
 
 /**
