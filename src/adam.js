@@ -3,13 +3,14 @@ require('dotenv').config()
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath, getEnvVar } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
-const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress } = require('./linear')
+const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress, lockIssue, unlockIssue, agentId } = require('./linear')
 
 /**
  * Main entry point for Adam mode.
  */
 async function runAdam () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
+  log('🤖', `Agent ID: ${agentId}`, 'blue')
 
   // Get poll interval from environment variable, default to 30 seconds
   const pollIntervalSeconds = parseInt(process.env.POLL_INTERVAL) || 30
@@ -76,6 +77,41 @@ function printIssues (issues) {
 }
 
 /**
+ * Check if there's work to do for an issue before locking it.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<boolean>} True if there's work to do, false otherwise.
+ */
+async function hasWorkToDo (issue) {
+  // Check if the PR already exists
+  const existingPR = await findExistingPR(issue, issue.repository)
+  if (existingPR) {
+    // Check if this is a merged PR
+    if (existingPR.merged) {
+      log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
+      return false
+    }
+
+    // Check for unresponded comments
+    const comments = await getPRComments(existingPR.number, issue.repository)
+    if (comments) {
+      const conversationThreads = filterRelevantComments(comments)
+      if (conversationThreads.length > 0) {
+        log('👀', `Found ${conversationThreads.length} unresponded comment(s) for issue ${issue.identifier}`, 'blue')
+        return true
+      }
+    }
+
+    log('ℹ️', `No unresponded comments found for issue ${issue.identifier}`, 'yellow')
+    return false
+  }
+
+  // No existing PR means there's work to do (create initial implementation)
+  log('✨', `No PR exists for issue ${issue.identifier} - work needed`, 'blue')
+  return true
+}
+
+/**
  * Process an issue.
  *
  * @param {Object} issue - The issue to process.
@@ -90,87 +126,109 @@ async function processIssue (issue) {
     return false
   }
 
-  // Clone the repository if it doesn't exist.
-  const repoExists = await ensureRepositoryExists(issue.repository)
-  if (!repoExists) {
-    log('❌', `Failed to ensure repository exists for issue ${issue.identifier}`, 'red')
+  // Check if there's work to do before attempting to lock
+  log('🔍', `Checking if there's work to do for issue ${issue.identifier}...`, 'blue')
+  const workExists = await hasWorkToDo(issue)
+  if (!workExists) {
+    log('⏭️', `No work to do for issue ${issue.identifier}, skipping lock`, 'yellow')
     return false
   }
 
-  // Checkout the branch for the issue.
-  const checkedOutBranch = await checkoutBranch(issue.branchName, getRepoPath(issue.repository.name))
-  if (!checkedOutBranch) {
-    log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
+  // Try to lock the issue only after determining there's work to do
+  log('🔒', `Work detected - attempting to lock issue ${issue.identifier}...`, 'blue')
+  const lockSuccess = await lockIssue(issue)
+  if (!lockSuccess) {
+    log('⚠️', `Failed to lock issue ${issue.identifier}, skipping (likely race condition)`, 'yellow')
     return false
   }
 
-  // Check if the PR already exists.
-  const existingPR = await findExistingPR(issue, issue.repository)
-  if (existingPR) {
-    // Check if this is a merged PR (race condition detected)
-    if (existingPR.merged) {
-      log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
+  try {
+    // Clone the repository if it doesn't exist.
+    const repoExists = await ensureRepositoryExists(issue.repository)
+    if (!repoExists) {
+      log('❌', `Failed to ensure repository exists for issue ${issue.identifier}`, 'red')
       return false
     }
-    const foundWork = await processExistingPR(existingPR, issue)
-    return foundWork
-  }
 
-  // Mark the issue as "In Progress" if it's currently in "Todo" state
-  log('🚀', `Marking issue ${issue.identifier} as In Progress...`, 'blue')
-  const updateSuccess = await updateIssueToInProgress(issue)
-  if (!updateSuccess) {
-    log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
-    return false
-  }
-
-  // Before calling Claude, double-check that the issue is still in Todo, In Progress, or In Review
-  log('🔍', `Double-checking issue status before implementing ${issue.identifier}...`, 'blue')
-  const currentIssue = await checkIssueStatus(issue.id)
-  if (!currentIssue) {
-    log('❌', `Failed to check current status for issue ${issue.identifier}`, 'red')
-    return false
-  }
-
-  const currentState = await currentIssue.state
-  if (currentState.name === 'Done') {
-    log('🛑', `Issue ${issue.identifier} has been marked as Done - skipping to avoid race condition`, 'yellow')
-    return false
-  }
-
-  if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
-    log('🛑', `Issue ${issue.identifier} is no longer in Todo, In Progress, or In Review state (current: ${currentState.name}) - skipping`, 'yellow')
-    return false
-  }
-
-  // Call Claude to generate the code.
-  const prompt = await generatePrompt(issue)
-  const claudeSuccess = await callClaude(prompt, getRepoPath(issue.repository.name))
-  if (!claudeSuccess) {
-    log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
-    return true // Still counts as finding work even if it failed
-  }
-
-  // Before creating PR, do one final check that the issue is still valid for PR creation
-  log('🔍', `Final check before creating PR for ${issue.identifier}...`, 'blue')
-  const finalIssue = await checkIssueStatus(issue.id)
-  if (finalIssue) {
-    const finalState = await finalIssue.state
-    if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled' || finalState.name === 'Duplicate') {
-      log('🛑', `Issue ${issue.identifier} was marked as ${finalState.name} during implementation - not creating PR to avoid race condition`, 'yellow')
-      return true // Still counts as finding work
+    // Checkout the branch for the issue.
+    const checkedOutBranch = await checkoutBranch(issue.branchName, getRepoPath(issue.repository.name))
+    if (!checkedOutBranch) {
+      log('❌', `Failed to checkout branch ${issue.branchName} for issue ${issue.identifier}`, 'red')
+      return false
     }
-  }
 
-  // Create a PR for the issue.
-  const pr = await createPR(issue, issue.branchName, issue.repository)
-  if (pr) {
-    log('🎉', `Successfully created PR for issue: ${issue.identifier}`, 'green')
-  } else {
-    log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
-  }
+    // Check if the PR already exists (we know there's work from hasWorkToDo check)
+    const existingPR = await findExistingPR(issue, issue.repository)
+    if (existingPR) {
+      // Double-check if this is a merged PR (race condition during lock acquisition)
+      if (existingPR.merged) {
+        log('🛑', `Skipping issue ${issue.identifier} - PR was merged during lock acquisition`, 'yellow')
+        return false
+      }
+      const foundWork = await processExistingPR(existingPR, issue)
+      return foundWork
+    }
 
-  return true // We found work and processed it
+    // Mark the issue as "In Progress" if it's currently in "Todo" state
+    log('🚀', `Marking issue ${issue.identifier} as In Progress...`, 'blue')
+    const updateSuccess = await updateIssueToInProgress(issue)
+    if (!updateSuccess) {
+      log('❌', `Failed to update issue ${issue.identifier} to In Progress, giving up`, 'red')
+      return false
+    }
+
+    // Before calling Claude, double-check that the issue is still in Todo, In Progress, or In Review
+    log('🔍', `Double-checking issue status before implementing ${issue.identifier}...`, 'blue')
+    const currentIssue = await checkIssueStatus(issue.id)
+    if (!currentIssue) {
+      log('❌', `Failed to check current status for issue ${issue.identifier}`, 'red')
+      return false
+    }
+
+    const currentState = await currentIssue.state
+    if (currentState.name === 'Done') {
+      log('🛑', `Issue ${issue.identifier} has been marked as Done - skipping to avoid race condition`, 'yellow')
+      return false
+    }
+
+    if (!['Todo', 'In Progress', 'In Review'].includes(currentState.name)) {
+      log('🛑', `Issue ${issue.identifier} is no longer in Todo, In Progress, or In Review state (current: ${currentState.name}) - skipping`, 'yellow')
+      return false
+    }
+
+    // Call Claude to generate the code.
+    const prompt = await generatePrompt(issue)
+    const claudeSuccess = await callClaude(prompt, getRepoPath(issue.repository.name))
+    if (!claudeSuccess) {
+      log('❌', `Claude Code failed for issue: ${issue.identifier}`, 'red')
+      return true // Still counts as finding work even if it failed
+    }
+
+    // Before creating PR, do one final check that the issue is still valid for PR creation
+    log('🔍', `Final check before creating PR for ${issue.identifier}...`, 'blue')
+    const finalIssue = await checkIssueStatus(issue.id)
+    if (finalIssue) {
+      const finalState = await finalIssue.state
+      if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled' || finalState.name === 'Duplicate') {
+        log('🛑', `Issue ${issue.identifier} was marked as ${finalState.name} during implementation - not creating PR to avoid race condition`, 'yellow')
+        return true // Still counts as finding work
+      }
+    }
+
+    // Create a PR for the issue.
+    const pr = await createPR(issue, issue.branchName, issue.repository)
+    if (pr) {
+      log('🎉', `Successfully created PR for issue: ${issue.identifier}`, 'green')
+    } else {
+      log('❌', `Failed to create PR for issue: ${issue.identifier}`, 'red')
+    }
+
+    return true // We found work and processed it
+  } finally {
+    // Always unlock the issue when we're done, regardless of success or failure
+    log('🔓', `Unlocking issue ${issue.identifier}...`, 'blue')
+    await unlockIssue(issue)
+  }
 }
 
 /**

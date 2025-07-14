@@ -1,7 +1,7 @@
 services:
-  adam:
+  adam1:
     build: .
-    container_name: adam-agent
+    container_name: adam1-agent
     restart: unless-stopped
     environment:
       # Override with environment variables if needed
@@ -16,7 +16,30 @@ services:
       - REPOS_DIR=${REPOS_DIR:-./repos}
     volumes:
       # Mount a volume for persistent git repositories
-      - adam_repos:/app/repos
+      - adam1_repos:/app/repos
+    stdin_open: true
+    tty: true
+    networks:
+      - adam-network
+
+  adam2:
+    build: .
+    container_name: adam2-agent
+    restart: unless-stopped
+    environment:
+      # Override with environment variables if needed
+      - MODE=${MODE:-adam}
+      - LINEAR_API_KEY=${LINEAR_API_KEY_ADAM:-${LINEAR_API_KEY}}
+      - GITHUB_TOKEN=${GITHUB_TOKEN_ADAM:-${GITHUB_TOKEN}}
+      - GITHUB_USERNAME=${GITHUB_USERNAME_ADAM:-${GITHUB_USERNAME}}
+      - GITHUB_EMAIL=${GITHUB_EMAIL_ADAM:-${GITHUB_EMAIL}}
+      - BASE_BRANCH=${BASE_BRANCH:-main}
+      - DEBUG=${DEBUG:-false}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - REPOS_DIR=${REPOS_DIR:-./repos}
+    volumes:
+      # Mount a volume for persistent git repositories
+      - adam2_repos:/app/repos
     stdin_open: true
     tty: true
     networks:
@@ -46,7 +69,9 @@ services:
       - adam-network
 
 volumes:
-  adam_repos:
+  adam1_repos:
+    driver: local
+  adam2_repos:
     driver: local
   eve_repos:
     driver: local
