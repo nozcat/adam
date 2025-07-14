@@ -22,7 +22,7 @@ Eve is an AI agent mode that reviews existing PRs and provides comments. It focu
 
 ### API - API Server Mode
 
-API mode runs a dedicated API server that other Adam components can connect to. This allows for centralized API management and communication between different agent instances.
+The API server provides a single service that talks to external APIs (Linear, Github) to deduplicate requests and not hit rate limits. It runs as a dedicated server that other Adam components can connect to for centralized API management.
 
 ## Architecture
 
