@@ -45,6 +45,52 @@ services:
     networks:
       - adam-network
 
+  adam3:
+    build: .
+    container_name: adam3-agent
+    restart: unless-stopped
+    environment:
+      # Override with environment variables if needed
+      - MODE=${MODE:-adam}
+      - LINEAR_API_KEY=${LINEAR_API_KEY_ADAM:-${LINEAR_API_KEY}}
+      - GITHUB_TOKEN=${GITHUB_TOKEN_ADAM:-${GITHUB_TOKEN}}
+      - GITHUB_USERNAME=${GITHUB_USERNAME_ADAM:-${GITHUB_USERNAME}}
+      - GITHUB_EMAIL=${GITHUB_EMAIL_ADAM:-${GITHUB_EMAIL}}
+      - BASE_BRANCH=${BASE_BRANCH:-main}
+      - DEBUG=${DEBUG:-false}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - REPOS_DIR=${REPOS_DIR:-./repos}
+    volumes:
+      # Mount a volume for persistent git repositories
+      - adam3_repos:/app/repos
+    stdin_open: true
+    tty: true
+    networks:
+      - adam-network
+
+  adam4:
+    build: .
+    container_name: adam4-agent
+    restart: unless-stopped
+    environment:
+      # Override with environment variables if needed
+      - MODE=${MODE:-adam}
+      - LINEAR_API_KEY=${LINEAR_API_KEY_ADAM:-${LINEAR_API_KEY}}
+      - GITHUB_TOKEN=${GITHUB_TOKEN_ADAM:-${GITHUB_TOKEN}}
+      - GITHUB_USERNAME=${GITHUB_USERNAME_ADAM:-${GITHUB_USERNAME}}
+      - GITHUB_EMAIL=${GITHUB_EMAIL_ADAM:-${GITHUB_EMAIL}}
+      - BASE_BRANCH=${BASE_BRANCH:-main}
+      - DEBUG=${DEBUG:-false}
+      - POLL_INTERVAL=${POLL_INTERVAL:-30}
+      - REPOS_DIR=${REPOS_DIR:-./repos}
+    volumes:
+      # Mount a volume for persistent git repositories
+      - adam4_repos:/app/repos
+    stdin_open: true
+    tty: true
+    networks:
+      - adam-network
+
   eve:
     build: .
     container_name: eve-agent
@@ -72,6 +118,10 @@ volumes:
   adam1_repos:
     driver: local
   adam2_repos:
+    driver: local
+  adam3_repos:
+    driver: local
+  adam4_repos:
     driver: local
   eve_repos:
     driver: local
