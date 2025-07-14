@@ -1,6 +1,10 @@
-# Adam - Developer AI Agent
+# Adam AI - AI Agent Platform
 
-## What is Adam?
+## What is Adam AI?
+
+Adam AI is an AI agent platform that provides multiple AI modes for different development purposes:
+
+### Adam - Developer AI Agent (Default)
 
 Adam is a developer AI agent that automates the software development workflow by:
 
@@ -12,19 +16,25 @@ Adam is a developer AI agent that automates the software development workflow by
 
 Adam runs in a continuous loop, checking for new issues and PR feedback at configurable intervals (default: 30 seconds), making it a fully automated development assistant.
 
+### Eve - AI Agent (Coming Soon)
+
+Eve is an AI agent mode that reviews existing PRs and provides comments. It focuses on code review and feedback rather than the automated development workflow that Adam provides.
+
 ## Architecture
 
-Adam is built with a mode-based architecture that allows for future extensibility:
+Adam AI is built with a mode-based architecture that allows for extensibility:
 
 - **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
+- **Eve Mode** (`MODE=eve`): An experimental AI agent mode currently under development
 - Additional modes can be added in the future for different workflows
 
 When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
 ```bash
 MODE=adam npm run start
+MODE=eve npm run start
 ```
 
-## Starting Adam
+## Starting the Agents
 
 ### Requirements
 
@@ -60,16 +70,25 @@ MODE=adam npm run start
    REPOS_DIR=./repos
    ```
 
-3. **Start Adam**
+3. **Start an agent**
+   
+   **Adam (default developer mode):**
    ```bash
    npm run start
+   # or
+   npm run adam
+   ```
+   
+   **Eve (experimental mode):**
+   ```bash
+   npm run eve
    ```
 
-   This will start Adam in the default mode. Adam will begin polling Linear for assigned issues and processing them automatically.
+   Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development.
 
 ## Docker Setup
 
-Adam can be run in a Docker container for easier deployment and isolation.
+Both Adam and Eve modes can be run in Docker containers for easier deployment and isolation.
 
 ### Prerequisites
 
