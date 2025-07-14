@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       # Override with environment variables if needed
-      - AGENT_MODE=adam
+      - MODE=${MODE:-adam}
       - LINEAR_API_KEY=${LINEAR_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_USERNAME=${GITHUB_USERNAME}
@@ -28,7 +28,7 @@ services:
     restart: "no"  # Don't restart since eve exits immediately
     environment:
       # Override with environment variables if needed
-      - AGENT_MODE=eve
+      - MODE=eve
       - LINEAR_API_KEY=${LINEAR_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_USERNAME=${GITHUB_USERNAME}

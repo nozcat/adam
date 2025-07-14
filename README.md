@@ -20,6 +20,20 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
 
 Eve is an AI agent mode that is currently under development. It will provide additional AI capabilities beyond the developer workflow automation that Adam provides.
 
+## Architecture
+
+Adam & Eve are built with a mode-based architecture that allows for extensibility:
+
+- **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
+- **Eve Mode** (`MODE=eve`): An experimental AI agent mode currently under development
+- Additional modes can be added in the future for different workflows
+
+When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
+```bash
+MODE=adam npm run start
+MODE=eve npm run start
+```
+
 ## Starting the Agents
 
 ### Requirements
@@ -49,6 +63,7 @@ Eve is an AI agent mode that is currently under development. It will provide add
    GITHUB_EMAIL=your_github_email
 
    # Optional
+   MODE=adam              # Application mode (defaults to 'adam')
    BASE_BRANCH=main
    DEBUG=false
    POLL_INTERVAL=30
@@ -69,7 +84,7 @@ Eve is an AI agent mode that is currently under development. It will provide add
    npm run eve
    ```
 
-Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development.
+   Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development.
 
 ## Docker Setup
 
@@ -156,7 +171,7 @@ docker run -it -v /path/to/your/.env:/app/config/.env --entrypoint /bin/bash ada
 ```
 
 Then manually:
-1. Copy environment: `cp /app/config/.env /app/agents/adam/adam/.env`
+1. Copy environment: `cp /app/config/.env /app/.env`
 2. Authenticate Claude Code: `claude` then `/login`
 3. Start Adam: `npm run start`
 
