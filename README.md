@@ -18,7 +18,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
 
 ### Eve - AI Agent (Coming Soon)
 
-Eve is an AI agent mode that is currently under development. It will provide additional AI capabilities beyond the developer workflow automation that Adam provides.
+Eve is an AI agent mode that reviews existing PRs and provides comments. It focuses on code review and feedback rather than the automated development workflow that Adam provides.
 
 ## Architecture
 
