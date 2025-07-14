@@ -35,24 +35,7 @@ async function runApi () {
   log('🚀', 'Starting API server mode', 'green')
 
   try {
-    const server = await startApiServer()
-
-    // Gracefully handle shutdown
-    process.on('SIGINT', () => {
-      log('🛑', 'Shutting down API server...', 'yellow')
-      server.close(() => {
-        log('👋', 'API server stopped', 'green')
-        process.exit(0)
-      })
-    })
-
-    process.on('SIGTERM', () => {
-      log('🛑', 'Shutting down API server...', 'yellow')
-      server.close(() => {
-        log('👋', 'API server stopped', 'green')
-        process.exit(0)
-      })
-    })
+    await startApiServer()
   } catch (error) {
     log('❌', `Failed to start API server: ${error.message}`, 'red')
     process.exit(1)
