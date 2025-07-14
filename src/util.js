@@ -28,38 +28,6 @@ function getEnvVar (baseVarName) {
   return process.env[modeSpecificVar] || process.env[baseVarName]
 }
 
-/**
- * Gets the LINEAR_API_KEY with mode-specific suffix if available
- * @returns {string|undefined} The Linear API key
- */
-function getLinearApiKey () {
-  return getEnvVar('LINEAR_API_KEY')
-}
-
-/**
- * Gets the GITHUB_TOKEN with mode-specific suffix if available
- * @returns {string|undefined} The GitHub token
- */
-function getGithubToken () {
-  return getEnvVar('GITHUB_TOKEN')
-}
-
-/**
- * Gets the GITHUB_USERNAME with mode-specific suffix if available
- * @returns {string|undefined} The GitHub username
- */
-function getGithubUsername () {
-  return getEnvVar('GITHUB_USERNAME')
-}
-
-/**
- * Gets the GITHUB_EMAIL with mode-specific suffix if available
- * @returns {string|undefined} The GitHub email
- */
-function getGithubEmail () {
-  return getEnvVar('GITHUB_EMAIL')
-}
-
 // Configure marked to use terminal renderer
 marked.use(markedTerminal())
 
@@ -99,9 +67,5 @@ module.exports = {
   DEBUG,
   getRepoPath,
   getMode,
-  getEnvVar,
-  getLinearApiKey,
-  getGithubToken,
-  getGithubUsername,
-  getGithubEmail
+  getEnvVar
 }

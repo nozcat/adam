@@ -1,7 +1,7 @@
 require('dotenv').config()
 
 const { callClaude, checkClaudePermissions } = require('./claude')
-const { log, getRepoPath, getGithubUsername } = require('./util')
+const { log, getRepoPath, getEnvVar } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
 const { pollLinear, checkIssueStatus, getIssueShortName, updateIssueToInProgress } = require('./linear')
 
@@ -297,7 +297,7 @@ async function respondToConversationThread (claudeResponse, lastComment, existin
  * @returns {Array} Array of conversation threads, each thread being an array of comments from root to leaf.
  */
 function filterRelevantComments (comments) {
-  const ourUsername = getGithubUsername()
+  const ourUsername = getEnvVar('GITHUB_USERNAME')
 
   const relevantComments = comments.filter(comment => {
     // Check if comment is written by nozcat or has +1 reaction by nozcat
