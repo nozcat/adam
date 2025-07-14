@@ -16,12 +16,12 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
 
 Adam is built with a mode-based architecture that allows for future extensibility:
 
-- **Adam Mode** (`--mode adam`): The main Linear-to-GitHub automation agent (default mode)
+- **Adam Mode** (`MODE=adam`): The main Linear-to-GitHub automation agent (default mode)
 - Additional modes can be added in the future for different workflows
 
-When you run `npm run start`, it automatically starts Adam in the default mode. For manual control, you can run:
+When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
 ```bash
-node src/index.js --mode adam
+MODE=adam npm run start
 ```
 
 ## Starting Adam
@@ -53,6 +53,7 @@ node src/index.js --mode adam
    GITHUB_EMAIL=your_github_email
 
    # Optional
+   MODE=adam              # Application mode (defaults to 'adam')
    BASE_BRANCH=main
    DEBUG=false
    POLL_INTERVAL=30

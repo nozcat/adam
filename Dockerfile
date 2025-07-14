@@ -91,7 +91,7 @@ else\n\
     echo "Example: docker run -v /path/to/your/.env:/app/config/.env adam"\n\
 fi\n\
 \n\
-# Start the application in adam mode\n\
+# Start the application\n\
 npm run start' > /app/start.sh && chmod +x /app/start.sh
 
 # Set the default command
