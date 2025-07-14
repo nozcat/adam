@@ -142,13 +142,24 @@ async function getAssignedIssues () {
  */
 async function getRepositoryFromIssue (issue) {
   try {
-    const project = await issue.project
-    if (!project) {
-      log('⚠️', `No project assigned to issue ${issue.identifier}`, 'yellow')
+    // Get labels from the issue
+    const labels = await issue.labels()
+    if (!labels || !labels.nodes) {
+      log('⚠️', `No labels found on issue ${issue.identifier}`, 'yellow')
       return null
     }
-    const repository = extractRepository(project.content)
-    return repository
+
+    // Look for a label matching the pattern repo:<owner>/<name>
+    for (const label of labels.nodes) {
+      const repository = extractRepositoryFromLabel(label.name)
+      if (repository) {
+        log('✅', `Found repository ${repository.owner}/${repository.name} from label on issue ${issue.identifier}`, 'green')
+        return repository
+      }
+    }
+
+    log('⚠️', `No repository label found on issue ${issue.identifier}`, 'yellow')
+    return null
   } catch (error) {
     log('⚠️', `Error getting repository from issue ${issue.identifier}: ${error.message}`, 'yellow')
     return null
@@ -156,15 +167,16 @@ async function getRepositoryFromIssue (issue) {
 }
 
 /**
- * Extract the repository from an project content.
+ * Extract the repository from a label name.
  *
- * @param {string} content - The project content.
- * @returns {Object} The repository information.
+ * @param {string} labelName - The label name to parse.
+ * @returns {Object|null} The repository information or null if not a repo label.
  */
-function extractRepository (content) {
-  if (!content) return null
+function extractRepositoryFromLabel (labelName) {
+  if (!labelName) return null
 
-  const match = content.match(/REPOSITORY=([^/]+)\/([^\s]+)/)
+  // Match pattern repo:<owner>/<name>
+  const match = labelName.match(/^repo:([^/]+)\/(.+)$/)
   if (match) {
     return {
       owner: match[1],

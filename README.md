@@ -214,12 +214,12 @@ Then manually:
 
 ### 1. Repository Configuration
 
-Each Linear project must specify the target repository in its content using the format:
+Issues in Linear must have a label that specifies the target repository using the format:
 ```
-REPOSITORY=owner/repo-name
+repo:owner/repo-name
 ```
 
-This tells Adam which GitHub repository to work with for issues in that project.
+For example, a label `repo:acme/backend` tells Adam to work with the `backend` repository owned by `acme`. This label-based approach allows for easier configuration without modifying project content.
 
 ### 2. Issue Assignment
 
