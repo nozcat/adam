@@ -1,6 +1,5 @@
 require('dotenv').config()
 
-const http = require('http')
 const { log, getEnvVar } = require('./util')
 const { startApiServer } = require('./api')
 
@@ -43,40 +42,25 @@ async function apiRequest (path, options = {}) {
   const url = await getApiServerUrl()
   const fullUrl = `${url}${path}`
 
-  return new Promise((resolve, reject) => {
-    const req = http.request(fullUrl, {
+  try {
+    const response = await fetch(fullUrl, {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
-      }
-    }, (res) => {
-      let data = ''
-
-      res.on('data', (chunk) => {
-        data += chunk
-      })
-
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data)
-          resolve(parsed)
-        } catch (error) {
-          reject(new Error(`Failed to parse API response: ${error.message}`))
-        }
-      })
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined
     })
 
-    req.on('error', (error) => {
-      reject(error)
-    })
-
-    if (options.body) {
-      req.write(JSON.stringify(options.body))
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    req.end()
-  })
+    const data = await response.json()
+    return data
+  } catch (error) {
+    throw new Error(`API request failed: ${error.message}`)
+  }
 }
 
 module.exports = {
