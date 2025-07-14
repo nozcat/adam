@@ -356,7 +356,14 @@ async function lockIssue (issue) {
   try {
     const labelName = getAgentLabelName(agentId)
 
-    // First, try to find if the label already exists in the organization
+    // First, check if any agent labels already exist on the issue
+    const existingAgentLabels = await checkForExistingAgentLabels(issue)
+    if (existingAgentLabels.length > 0) {
+      log('🔒', `Issue ${issue.identifier} is already locked by agent: ${existingAgentLabels[0]}`, 'yellow')
+      return false
+    }
+
+    // Try to find if the label already exists in the organization
     const labelId = await findOrCreateLabel(labelName)
     if (!labelId) {
       return false
@@ -367,9 +374,7 @@ async function lockIssue (issue) {
       labelIds: await getLabelIds(issue, [labelId])
     })
 
-    log('🔒', `Successfully locked issue ${issue.identifier} with agent label`, 'green')
-
-    // Check for race conditions - if another agent also added a label, remove ours
+    // Immediately check for race conditions - if another agent also added a label, remove ours
     const hasRaceCondition = await checkForRaceCondition(issue)
     if (hasRaceCondition) {
       log('⚠️', `Race condition detected for issue ${issue.identifier}, removing our label`, 'yellow')
@@ -377,6 +382,7 @@ async function lockIssue (issue) {
       return false
     }
 
+    log('🔒', `Successfully locked issue ${issue.identifier} with agent label`, 'green')
     return true
   } catch (error) {
     log('❌', `Error locking issue ${issue.identifier}: ${error.message}`, 'red')
@@ -415,6 +421,30 @@ async function unlockIssue (issue) {
   } catch (error) {
     log('❌', `Error unlocking issue ${issue.identifier}: ${error.message}`, 'red')
     return false
+  }
+}
+
+/**
+ * Check for existing agent labels on an issue.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<Array<string>>} Array of agent label names found on the issue.
+ */
+async function checkForExistingAgentLabels (issue) {
+  try {
+    const labels = await issue.labels()
+    if (!labels || !labels.nodes) {
+      return []
+    }
+
+    const agentLabels = labels.nodes
+      .filter(label => label.name.startsWith('agent:'))
+      .map(label => label.name)
+
+    return agentLabels
+  } catch (error) {
+    log('⚠️', `Error checking for existing agent labels on issue ${issue.identifier}: ${error.message}`, 'yellow')
+    return []
   }
 }
 
