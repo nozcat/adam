@@ -156,17 +156,9 @@ async function processIssue (issue) {
   const finalIssue = await checkIssueStatus(issue.id)
   if (finalIssue) {
     const finalState = await finalIssue.state
-    if (finalState.name === 'Done') {
-      log('🛑', `Issue ${issue.identifier} was marked as Done during implementation - not creating PR to avoid race condition`, 'yellow')
+    if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled') {
+      log('🛑', `Issue ${issue.identifier} was marked as ${finalState.name} during implementation - not creating PR to avoid race condition`, 'yellow')
       return true // Still counts as finding work
-    }
-    if (finalState.name === 'Cancelled' || finalState.name === 'Canceled') {
-      log('🛑', `Issue ${issue.identifier} was cancelled - not creating PR or pushing changes`, 'yellow')
-      return
-    }
-    if (!['Todo', 'In Progress', 'In Review'].includes(finalState.name)) {
-      log('🛑', `Issue ${issue.identifier} is no longer in a valid state for PR creation (current: ${finalState.name}) - not creating PR`, 'yellow')
-      return
     }
   }
 
