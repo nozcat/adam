@@ -151,13 +151,13 @@ async function processIssue (issue) {
     return true // Still counts as finding work even if it failed
   }
 
-  // Before creating PR, do one final check that the issue hasn't been marked as Done
+  // Before creating PR, do one final check that the issue is still valid for PR creation
   log('🔍', `Final check before creating PR for ${issue.identifier}...`, 'blue')
   const finalIssue = await checkIssueStatus(issue.id)
   if (finalIssue) {
     const finalState = await finalIssue.state
-    if (finalState.name === 'Done') {
-      log('🛑', `Issue ${issue.identifier} was marked as Done during implementation - not creating PR to avoid race condition`, 'yellow')
+    if (finalState.name === 'Done' || finalState.name === 'Cancelled' || finalState.name === 'Canceled' || finalState.name === 'Duplicate') {
+      log('🛑', `Issue ${issue.identifier} was marked as ${finalState.name} during implementation - not creating PR to avoid race condition`, 'yellow')
       return true // Still counts as finding work
     }
   }
