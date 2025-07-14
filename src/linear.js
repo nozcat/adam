@@ -362,11 +362,6 @@ async function lockIssue (issue) {
       return false
     }
 
-    // Get the current issue state to check for existing agent labels
-    const currentIssue = await linearClient.issue(issue.id)
-    const currentLabels = await currentIssue.labels()
-    const currentLabelIds = currentLabels?.nodes ? currentLabels.nodes.map(label => label.id) : []
-
     // Check if any agent labels already exist on the issue
     const existingAgentLabels = await checkForExistingAgentLabels(issue)
     if (existingAgentLabels.length > 0) {
@@ -374,19 +369,23 @@ async function lockIssue (issue) {
       return false
     }
 
-    // Atomically add our label only if no other agent labels exist
-    // Use the current label set as the base to prevent race conditions
-    const newLabelIds = [...currentLabelIds, labelId]
-    await linearClient.updateIssue(issue.id, {
-      labelIds: newLabelIds
-    })
+    // Add our agent label to the issue
+    await linearClient.issueAddLabel(issue.id, labelId)
 
-    // Immediately verify the lock was successful by checking the final state
-    const lockVerification = await verifyLockOwnership(issue, labelName)
-    if (!lockVerification.success) {
-      log('⚠️', `Lock verification failed for issue ${issue.identifier}: ${lockVerification.reason}`, 'yellow')
-      // Try to clean up our label if it was added
-      await unlockIssue(issue)
+    // After adding the label, check if any other agent labels exist on the issue
+    const updatedIssue = await linearClient.issue(issue.id)
+    const updatedLabels = await updatedIssue.labels()
+    const updatedLabelNames = updatedLabels?.nodes ? updatedLabels.nodes.map(label => label.name) : []
+
+    // Check for other agent labels (excluding our own)
+    const otherAgentLabels = updatedLabelNames.filter(name =>
+      name.startsWith('agent-') && name !== labelName
+    )
+
+    if (otherAgentLabels.length > 0) {
+      log('🔒', `Issue ${issue.identifier} lock failed - another agent is already present: ${otherAgentLabels[0]}`, 'yellow')
+      // Remove our label since lock failed
+      await linearClient.issueRemoveLabel(issue.id, labelId)
       return false
     }
 
@@ -414,15 +413,14 @@ async function unlockIssue (issue) {
       return true // No labels to remove
     }
 
-    // Filter out our agent label
-    const remainingLabels = labels.nodes
-      .filter(label => label.name !== labelName)
-      .map(label => label.id)
+    // Find our agent label
+    const agentLabel = labels.nodes.find(label => label.name === labelName)
+    if (!agentLabel) {
+      return true // Our label is not present, nothing to remove
+    }
 
-    // Update the issue with the remaining labels
-    await linearClient.updateIssue(issue.id, {
-      labelIds: remainingLabels
-    })
+    // Remove our agent label
+    await linearClient.issueRemoveLabel(issue.id, agentLabel.id)
 
     log('🔓', `Successfully unlocked issue ${issue.identifier}`, 'green')
     return true
@@ -463,46 +461,6 @@ async function checkForExistingAgentLabels (issue) {
  * @param {string} expectedLabelName - The expected agent label name.
  * @returns {Promise<{success: boolean, reason?: string}>} Lock verification result.
  */
-async function verifyLockOwnership (issue, expectedLabelName) {
-  try {
-    // Re-fetch the issue to get the latest labels
-    const freshIssue = await linearClient.issue(issue.id)
-    const labels = await freshIssue.labels()
-
-    if (!labels || !labels.nodes) {
-      return { success: false, reason: 'Unable to fetch issue labels' }
-    }
-
-    const agentLabels = labels.nodes.filter(label => label.name.startsWith('agent:'))
-
-    // We should have exactly one agent label and it should be ours
-    if (agentLabels.length === 0) {
-      return { success: false, reason: 'No agent labels found after lock attempt' }
-    }
-
-    if (agentLabels.length > 1) {
-      return {
-        success: false,
-        reason: `Multiple agent labels detected: ${agentLabels.map(l => l.name).join(', ')}`
-      }
-    }
-
-    // Check if the single agent label is ours
-    if (agentLabels[0].name !== expectedLabelName) {
-      return {
-        success: false,
-        reason: `Lock owned by different agent: ${agentLabels[0].name}`
-      }
-    }
-
-    return { success: true }
-  } catch (error) {
-    return {
-      success: false,
-      reason: `Error verifying lock ownership: ${error.message}`
-    }
-  }
-}
 
 /**
  * Find or create a label with the given name.
