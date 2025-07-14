@@ -372,6 +372,9 @@ async function lockIssue (issue) {
     // Add our agent label to the issue
     await linearClient.issueAddLabel(issue.id, labelId)
 
+    // Sleep for 2 seconds to ensure the label is added
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
     // After adding the label, check if any other agent labels exist on the issue
     const updatedIssue = await linearClient.issue(issue.id)
     const updatedLabels = await updatedIssue.labels()
