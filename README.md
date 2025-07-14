@@ -22,7 +22,7 @@ Eve is an AI agent mode that reviews existing PRs and provides comments. It focu
 
 ### API - API Server Mode
 
-The API server provides a single service that talks to external APIs (Linear, Github) to deduplicate requests and not hit rate limits. It runs as a dedicated FastAPI server that other Adam components can connect to for centralized API management.
+The API server provides a single service that talks to external APIs (Linear, Github) to deduplicate requests and not hit rate limits. It runs as a dedicated Express.js server that other Adam components can connect to for centralized API management.
 
 ## Architecture
 
@@ -45,7 +45,6 @@ MODE=api npm run start
 ### Requirements
 
 - **Node.js 24+** (latest LTS recommended)
-- **Python 3.8+** (for API mode)
 - **Linear API access** - API key with read access to your Linear workspace
 - **GitHub access** - Personal access token with repo permissions
 - **Claude Code** - Adam uses Claude Code to implement changes
@@ -57,9 +56,6 @@ MODE=api npm run start
 1. **Install dependencies**
    ```bash
    npm install
-   
-   # For API mode
-   pip3 install -r requirements.txt
    ```
 
 2. **Configure environment variables**

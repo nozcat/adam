@@ -1,6 +1,6 @@
 require('dotenv').config()
 
-const http = require('http')
+const express = require('express')
 const { log, getEnvVar } = require('./util')
 
 /**
@@ -9,14 +9,22 @@ const { log, getEnvVar } = require('./util')
  */
 async function startApiServer () {
   const port = parseInt(getEnvVar('API_PORT')) || 8880
+  const app = express()
 
-  const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok', message: 'API server is running' }))
+  // Middleware
+  app.use(express.json())
+
+  // Routes
+  app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'API server is running' })
+  })
+
+  app.get('/health', (req, res) => {
+    res.json({ status: 'healthy' })
   })
 
   return new Promise((resolve, reject) => {
-    server.listen(port, () => {
+    const server = app.listen(port, () => {
       log('🌐', `API server started on port ${port}`, 'green')
       resolve(server)
     })
