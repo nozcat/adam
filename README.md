@@ -20,18 +20,24 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
 
 Eve is an AI agent mode that reviews existing PRs and provides comments. It focuses on code review and feedback rather than the automated development workflow that Adam provides.
 
+### API - API Server Mode
+
+API mode runs a dedicated API server that other Adam components can connect to. This allows for centralized API management and communication between different agent instances.
+
 ## Architecture
 
 Adam AI is built with a mode-based architecture that allows for extensibility:
 
 - **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
 - **Eve Mode** (`MODE=eve`): An experimental AI agent mode currently under development
+- **API Mode** (`MODE=api`): Runs a standalone API server that other agents can connect to
 - Additional modes can be added in the future for different workflows
 
 When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
 ```bash
 MODE=adam npm run start
 MODE=eve npm run start
+MODE=api npm run start
 ```
 
 ## Starting the Agents
@@ -69,6 +75,8 @@ MODE=eve npm run start
    POLL_INTERVAL=30
    REPOS_DIR=./repos
    REPOS=                 # Comma-separated list of allowed repositories (e.g., owner/repo1,owner/repo2)
+   API_SERVER=            # External API server URL (e.g., localhost:8880). If not set, agents start their own API server
+   API_PORT=8880          # Port for the local API server (defaults to 8880)
    ```
 
 3. **Start an agent**
@@ -84,8 +92,37 @@ MODE=eve npm run start
    ```bash
    npm run eve
    ```
+   
+   **API (server mode):**
+   ```bash
+   npm run api
+   ```
 
-   Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development.
+   Adam will begin polling Linear for assigned issues and processing them automatically. Eve currently just logs its startup and exits as it's still under development. API mode starts a dedicated API server.
+
+## API Server
+
+Adam AI includes an API server mode that provides centralized API functionality for agent communication. The API server can be run in two configurations:
+
+### Embedded Mode (Default)
+When the `API_SERVER` environment variable is not set, both Adam and Eve agents will automatically start their own embedded API server on startup. This is the simplest setup for single-agent deployments.
+
+### Standalone Mode
+For multi-agent deployments or when you want centralized API management:
+
+1. **Start the API server**:
+   ```bash
+   npm run api
+   # or
+   MODE=api npm run start
+   ```
+
+2. **Configure agents to use the external API server**:
+   ```env
+   API_SERVER=localhost:8880  # or any host:port where your API server is running
+   ```
+
+The API server provides a health check endpoint and will be extended with additional functionality in future releases.
 
 ## Docker Setup
 

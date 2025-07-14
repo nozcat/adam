@@ -7,7 +7,8 @@
     "lint": "npx standard --fix",
     "start": "node ./src/index.js",
     "adam": "MODE=adam node ./src/index.js",
-    "eve": "MODE=eve node ./src/index.js"
+    "eve": "MODE=eve node ./src/index.js",
+    "api": "MODE=api node ./src/index.js"
   },
   "dependencies": {
     "@linear/sdk": "^46.0.0",
