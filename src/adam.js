@@ -97,7 +97,7 @@ async function hasWorkToDo (issue) {
     if (comments) {
       const conversationThreads = filterRelevantComments(comments)
       if (conversationThreads.length > 0) {
-        log('💬', `Found ${conversationThreads.length} unresponded comment(s) for issue ${issue.identifier}`, 'blue')
+        log('👀', `Found ${conversationThreads.length} unresponded comment(s) for issue ${issue.identifier}`, 'blue')
         return true
       }
     }
