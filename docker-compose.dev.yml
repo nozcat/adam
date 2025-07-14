@@ -1,7 +1,7 @@
 services:
   adam:
     build: .
-    container_name: adam-agent
+    container_name: adam-agent-dev
     restart: unless-stopped
     environment:
       # Override with environment variables if needed
@@ -14,11 +14,12 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
     volumes:
+      # Mount source code for development (enables live reloading without rebuild)
+      - .:/app
       # Mount a volume for persistent git repositories
       - adam_repos:/app/repos
-      # Uncomment the lines below for development mode (source code mounting):
-      # - .:/app
-      # - /app/node_modules
+      # Exclude node_modules to avoid conflicts between host and container
+      - /app/node_modules
     stdin_open: true
     tty: true
     networks:

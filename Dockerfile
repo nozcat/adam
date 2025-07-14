@@ -67,7 +67,7 @@ RUN mkdir -p /app/config
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the application
+# Copy the rest of the application (can be overridden by volume mount for development)
 COPY . .
 
 # Create repos directory and set permissions for appuser
