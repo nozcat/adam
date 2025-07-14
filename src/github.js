@@ -110,6 +110,79 @@ async function ensureRepositoryExists (repoInfo) {
 }
 
 /**
+ * Clones all repositories specified in the REPOS environment variable.
+ * REPOS should be a comma-separated list of repositories in the format: owner/repo-name
+ *
+ * @returns {Promise<void>}
+ *
+ * @example
+ * // With REPOS="facebook/react,vuejs/vue"
+ * await cloneReposFromEnv() // Clones both react and vue repositories
+ */
+async function cloneReposFromEnv () {
+  const reposEnv = getEnvVar('REPOS')
+  if (!reposEnv || reposEnv.trim() === '') {
+    log('⚠️', 'No repositories configured in REPOS environment variable', 'yellow')
+    return
+  }
+
+  const repos = reposEnv.split(',').map(r => r.trim()).filter(r => r)
+  log('📦', `Found ${repos.length} repositories to clone from REPOS environment variable`, 'blue')
+
+  for (const repoString of repos) {
+    const [owner, name] = repoString.split('/')
+    if (!owner || !name) {
+      log('⚠️', `Invalid repository format: ${repoString}. Expected format: owner/repo-name`, 'yellow')
+      continue
+    }
+
+    const repoInfo = { owner, name }
+    const success = await ensureRepositoryExists(repoInfo)
+    if (!success) {
+      log('❌', `Failed to clone repository: ${repoString}`, 'red')
+    }
+  }
+
+  log('✅', 'Finished processing repositories from REPOS environment variable', 'green')
+}
+
+/**
+ * Gets the list of allowed repositories from the REPOS environment variable.
+ *
+ * @returns {Set<string>} A set of repository strings in the format "owner/repo-name"
+ */
+function getAllowedRepos () {
+  const reposEnv = getEnvVar('REPOS')
+  if (!reposEnv || reposEnv.trim() === '') {
+    return new Set()
+  }
+
+  const repos = reposEnv.split(',')
+    .map(r => r.trim())
+    .filter(r => r && r.includes('/'))
+
+  return new Set(repos)
+}
+
+/**
+ * Checks if a repository is in the allowed REPOS list.
+ *
+ * @param {string} owner - Repository owner
+ * @param {string} name - Repository name
+ * @returns {boolean} True if the repository is allowed, false otherwise
+ */
+function isRepoAllowed (owner, name) {
+  const allowedRepos = getAllowedRepos()
+  if (allowedRepos.size === 0) {
+    // If REPOS is not configured, allow all repositories (backward compatibility)
+    return true
+  }
+
+  const repoString = `${owner}/${name}`
+  return allowedRepos.has(repoString)
+}
+
+/**
  * Checks if a Git branch exists in the specified repository.
  * Searches both local and remote branches for the given branch name.
  *
@@ -850,5 +923,7 @@ module.exports = {
   postReviewCommentReply,
   addCommentReaction,
   pushBranch,
-  pushBranchAndMergeIfNecessary
+  pushBranchAndMergeIfNecessary,
+  cloneReposFromEnv,
+  isRepoAllowed
 }

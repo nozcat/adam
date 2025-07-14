@@ -68,6 +68,7 @@ MODE=eve npm run start
    DEBUG=false
    POLL_INTERVAL=30
    REPOS_DIR=./repos
+   REPOS=                 # Comma-separated list of allowed repositories (e.g., owner/repo1,owner/repo2)
    ```
 
 3. **Start an agent**
@@ -257,6 +258,36 @@ Adam will:
 - **Error handling** - Gracefully handles API failures and retries operations
 - **Logging** - Comprehensive logging with colored output for monitoring
 - **Continuous operation** - Runs continuously, processing new issues and feedback as they arrive
+
+## Repository Management
+
+### Restricting Repository Access
+
+By default, Adam can work with any repository specified in Linear project configurations. You can restrict Adam to only work with specific repositories using the `REPOS` environment variable:
+
+```env
+# Allow only specific repositories
+REPOS=facebook/react,vuejs/vue,angular/angular
+```
+
+When `REPOS` is configured:
+- Adam will automatically clone all specified repositories on startup
+- Adam will only process issues for repositories in this list
+- Issues for repositories not in the list will throw an error
+- Each repository uses the same GitHub credentials configured in the environment
+
+This is useful for:
+- **Security** - Limit which repositories Adam can access
+- **Multi-tenant setups** - Run separate Adam instances for different repository groups
+- **Pre-cloning** - Ensure all required repositories are available before processing issues
+
+### Repository Format
+
+Repositories must be specified in the format `owner/repo-name`:
+- ✅ `facebook/react`
+- ✅ `microsoft/vscode`
+- ❌ `react` (missing owner)
+- ❌ `facebook/react.git` (don't include .git)
 
 ## Development
 
