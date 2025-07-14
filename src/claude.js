@@ -87,14 +87,17 @@ async function callClaude (prompt, dir) {
       result = result || logLine(lineBuffer)
 
       if (code === 0) {
-        if (result.is_error) {
+        if (result && result.is_error) {
           log('❌', `Claude Code failed: ${result.result}`, 'red')
           reject(new Error(`Claude Code failed: ${result.result}`))
-        } else {
+        } else if (result) {
           log('✅', 'Claude Code completed successfully', 'green')
           // Update timestamp on successful Claude call
           lastClaudePermissionsVerified = Date.now()
           resolve(result.result)
+        } else {
+          log('❌', 'No valid result received from Claude Code', 'red')
+          reject(new Error('No valid result received from Claude Code'))
         }
       } else {
         // Check if this is a Claude usage limit error (can be in stdout or stderr)
@@ -144,6 +147,7 @@ function logLine (line) {
   } catch (error) {
     log('❌', `Failed to parse line as JSON: ${error.message}`, 'red')
     log('❌', `Line: ${line}`, 'red')
+    return { result: `JSON parsing error: ${error.message}`, is_error: true }
   }
 }
 
@@ -154,13 +158,17 @@ function logLine (line) {
  * @returns {string} The result text
  */
 function logResult (json) {
-  log('🤖', marked.parse(json.result).trim())
+  if (json.result && typeof json.result === 'string') {
+    log('🤖', marked.parse(json.result).trim())
+  } else {
+    log('🤖', 'No result content received')
+  }
 
   if (DEBUG) {
     log('🔧', JSON.stringify(json), 'cyan')
   }
 
-  return { result: json.result, is_error: json.is_error }
+  return { result: json.result || '', is_error: json.is_error || false }
 }
 
 /**
