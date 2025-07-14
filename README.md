@@ -100,7 +100,7 @@ Both Adam and Eve modes can be run in Docker containers for easier deployment an
 
 The easiest way to run Adam with Docker is using Docker Compose. By default, it will start 4 Adam agents (adam1-adam4) and one Eve agent:
 
-**Note on Claude MAX Subscription:** Running 4 Adam agents concurrently works best with a Claude MAX subscription. Each agent requires access to Claude Code, and the MAX subscription provides the necessary rate limits and concurrent request capacity to support multiple agents working in parallel. With a standard Claude subscription, you may experience rate limiting or reduced performance when running all 4 agents simultaneously.
+**Note on Claude MAX Subscription:** Running 4 Adam agents concurrently works best with a Claude MAX subscription. Each agent requires access to Claude Code, and the MAX subscription provides the necessary request limits to support multiple agents working in parallel. With a standard Claude subscription, you might run out of requests pretty quickly if more than one Adam agent stays busy for a while.
 
 1. **Prepare your environment file**:
    ```bash
