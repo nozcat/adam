@@ -238,10 +238,12 @@ For example, a label `repo:acme/backend` tells Adam to work with the `backend` r
 
 Adam will:
 - Detect the assigned issue
+- Lock the issue by adding an `agent:` label to prevent multiple agents from working on the same issue
 - Clone or update the target repository
 - Create a branch for the issue (based on issue identifier)
 - Use Claude Code to implement the changes
 - Create a pull request with the implementation
+- Unlock the issue by removing the agent label when done
 
 ### 4. PR Feedback and Iteration
 
