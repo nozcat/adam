@@ -12,6 +12,18 @@ Adam is a developer AI agent that automates the software development workflow by
 
 Adam runs in a continuous loop, checking for new issues and PR feedback at configurable intervals (default: 30 seconds), making it a fully automated development assistant.
 
+## Architecture
+
+Adam is built with a mode-based architecture that allows for future extensibility:
+
+- **Adam Mode** (`MODE=adam`): The main developer agent that implements features from Linear in GitHub (default mode)
+- Additional modes can be added in the future for different workflows
+
+When you run `npm run start`, it automatically starts Adam in the default mode. You can specify a different mode using the `MODE` environment variable:
+```bash
+MODE=adam npm run start
+```
+
 ## Starting Adam
 
 ### Requirements
@@ -41,6 +53,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
    GITHUB_EMAIL=your_github_email
 
    # Optional
+   MODE=adam              # Application mode (defaults to 'adam')
    BASE_BRANCH=main
    DEBUG=false
    POLL_INTERVAL=30
@@ -52,7 +65,7 @@ Adam runs in a continuous loop, checking for new issues and PR feedback at confi
    npm run start
    ```
 
-Adam will begin polling Linear for assigned issues and processing them automatically.
+   This will start Adam in the default mode. Adam will begin polling Linear for assigned issues and processing them automatically.
 
 ## Docker Setup
 
@@ -139,7 +152,7 @@ docker run -it -v /path/to/your/.env:/app/config/.env --entrypoint /bin/bash ada
 ```
 
 Then manually:
-1. Copy environment: `cp /app/config/.env /app/agents/adam/adam/.env`
+1. Copy environment: `cp /app/config/.env /app/.env`
 2. Authenticate Claude Code: `claude` then `/login`
 3. Start Adam: `npm run start`
 
