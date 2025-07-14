@@ -3,7 +3,7 @@ require('dotenv').config()
 const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath, getEnvVar } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary } = require('./github')
-const { pollLinear, checkIssueStatus, getIssueShortName, updateIssueToInProgress } = require('./linear')
+const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress } = require('./linear')
 
 /**
  * Main entry point for Adam mode.
@@ -506,14 +506,30 @@ Your response should be suitable as a reply to the conversation thread. It shoul
  * @returns {Promise<string>} A formatted prompt string for Claude Code
  */
 async function generatePrompt (issue) {
-  return `
+  // Get conversation thread comments
+  const comments = await getIssueComments(issue)
+  const conversationThread = await formatConversationThread(comments)
+
+  let prompt = `
     Please implement the following issue:
 
     Title: ${issue.title}
-    Description: ${issue.description || ''}
+    Description: ${issue.description || ''}`
+
+  // Add conversation thread if there are comments
+  if (conversationThread) {
+    prompt += `
+
+    Conversation Thread:
+    ${conversationThread}`
+  }
+
+  prompt += `
 
     Complete this task completely and commit your changes when done.
   `
+
+  return prompt
 }
 
 module.exports = { runAdam }
