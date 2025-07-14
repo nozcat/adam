@@ -1,8 +1,56 @@
 const { LinearClient } = require('@linear/sdk')
 const { log, getEnvVar } = require('./util')
+const crypto = require('crypto')
+const os = require('os')
 
 // Initialize the Linear client.
 const linearClient = new LinearClient({ apiKey: getEnvVar('LINEAR_API_KEY') })
+
+// Generate a unique agent identifier for this instance
+const agentId = generateAgentId()
+
+/**
+ * Generate a unique agent identifier for this Adam instance.
+ *
+ * @returns {string} A unique identifier for this agent
+ */
+function generateAgentId () {
+  const hostname = os.hostname()
+  const processId = process.pid
+  const timestamp = Date.now()
+  const random = crypto.randomBytes(4).toString('hex')
+
+  return `adam-${hostname}-${processId}-${timestamp}-${random}`
+}
+
+/**
+ * Generate the agent label name for Linear issues.
+ *
+ * @param {string} agentId - The agent identifier
+ * @returns {string} The label name to use on Linear issues
+ */
+function getAgentLabelName (agentId) {
+  return `agent:${agentId}`
+}
+
+/**
+ * Generate a branch name from an issue.
+ *
+ * @param {Object} issue - The Linear issue object
+ * @returns {string} The branch name
+ */
+function generateBranchName (issue) {
+  const username = getEnvVar('GITHUB_USERNAME') || 'adam'
+  const identifier = issue.identifier.toLowerCase()
+  const titleSlug = issue.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 50)
+    .replace(/-+$/, '')
+
+  return `${username}/${identifier}-${titleSlug}`
+}
 
 /**
  * Poll Linear for assigned issues.
@@ -15,11 +63,22 @@ async function pollLinear () {
   try {
     const issues = await getAssignedIssues()
 
+    const availableIssues = []
     for (const issue of issues) {
       issue.repository = await getRepositoryFromIssue(issue)
+      issue.branchName = generateBranchName(issue)
+
+      // Check if this issue is already being processed by another agent
+      const isLocked = await isIssueLockedByAnotherAgent(issue)
+      if (isLocked) {
+        log('🔒', `Issue ${issue.identifier} is locked by another agent, skipping`, 'yellow')
+        continue
+      }
+
+      availableIssues.push(issue)
     }
 
-    return issues
+    return availableIssues
   } catch (error) {
     log('❌', `Error polling Linear: ${error.message}`, 'red')
     return []
@@ -224,9 +283,200 @@ function getIssueShortName (issue) {
   return `[${issue.identifier}] ${issue.title} (${repository})`
 }
 
+/**
+ * Check if an issue is locked by another agent.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<boolean>} True if locked by another agent, false otherwise.
+ */
+async function isIssueLockedByAnotherAgent (issue) {
+  try {
+    const labels = await issue.labels()
+    if (!labels || !labels.nodes) {
+      return false
+    }
+
+    // Look for any agent labels
+    for (const label of labels.nodes) {
+      if (label.name.startsWith('agent:')) {
+        // If it's not our agent ID, then it's locked by another agent
+        const currentAgentLabel = getAgentLabelName(agentId)
+        if (label.name !== currentAgentLabel) {
+          return true
+        }
+      }
+    }
+
+    return false
+  } catch (error) {
+    log('⚠️', `Error checking if issue ${issue.identifier} is locked: ${error.message}`, 'yellow')
+    return false
+  }
+}
+
+/**
+ * Lock an issue by adding our agent label.
+ *
+ * @param {Object} issue - The issue to lock.
+ * @returns {Promise<boolean>} True if successfully locked, false otherwise.
+ */
+async function lockIssue (issue) {
+  try {
+    const labelName = getAgentLabelName(agentId)
+
+    // First, try to find if the label already exists in the organization
+    const labelId = await findOrCreateLabel(labelName)
+    if (!labelId) {
+      return false
+    }
+
+    // Add the label to the issue
+    await linearClient.updateIssue(issue.id, {
+      labelIds: await getLabelIds(issue, [labelId])
+    })
+
+    log('🔒', `Successfully locked issue ${issue.identifier} with agent label`, 'green')
+
+    // Check for race conditions - if another agent also added a label, remove ours
+    const hasRaceCondition = await checkForRaceCondition(issue)
+    if (hasRaceCondition) {
+      log('⚠️', `Race condition detected for issue ${issue.identifier}, removing our label`, 'yellow')
+      await unlockIssue(issue)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    log('❌', `Error locking issue ${issue.identifier}: ${error.message}`, 'red')
+    return false
+  }
+}
+
+/**
+ * Unlock an issue by removing our agent label.
+ *
+ * @param {Object} issue - The issue to unlock.
+ * @returns {Promise<boolean>} True if successfully unlocked, false otherwise.
+ */
+async function unlockIssue (issue) {
+  try {
+    const labelName = getAgentLabelName(agentId)
+
+    // Get current labels
+    const labels = await issue.labels()
+    if (!labels || !labels.nodes) {
+      return true // No labels to remove
+    }
+
+    // Filter out our agent label
+    const remainingLabels = labels.nodes
+      .filter(label => label.name !== labelName)
+      .map(label => label.id)
+
+    // Update the issue with the remaining labels
+    await linearClient.updateIssue(issue.id, {
+      labelIds: remainingLabels
+    })
+
+    log('🔓', `Successfully unlocked issue ${issue.identifier}`, 'green')
+    return true
+  } catch (error) {
+    log('❌', `Error unlocking issue ${issue.identifier}: ${error.message}`, 'red')
+    return false
+  }
+}
+
+/**
+ * Check for race conditions by looking for multiple agent labels.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<boolean>} True if race condition detected, false otherwise.
+ */
+async function checkForRaceCondition (issue) {
+  try {
+    // Re-fetch the issue to get the latest labels
+    const freshIssue = await linearClient.issue(issue.id)
+    const labels = await freshIssue.labels()
+
+    if (!labels || !labels.nodes) {
+      return false
+    }
+
+    const agentLabels = labels.nodes.filter(label => label.name.startsWith('agent:'))
+
+    // If there's more than one agent label, we have a race condition
+    if (agentLabels.length > 1) {
+      const currentAgentLabel = getAgentLabelName(agentId)
+
+      // Check if our label was added first (by comparing timestamps if available)
+      // For simplicity, we'll remove our label if we detect any other agent labels
+      const hasOtherAgents = agentLabels.some(label => label.name !== currentAgentLabel)
+      return hasOtherAgents
+    }
+
+    return false
+  } catch (error) {
+    log('⚠️', `Error checking for race condition on issue ${issue.identifier}: ${error.message}`, 'yellow')
+    return false
+  }
+}
+
+/**
+ * Find or create a label with the given name.
+ *
+ * @param {string} labelName - The name of the label to find or create.
+ * @returns {Promise<string|null>} The label ID if found/created, null otherwise.
+ */
+async function findOrCreateLabel (labelName) {
+  try {
+    // First, try to find existing label
+    const existingLabels = await linearClient.issueLabels({
+      filter: { name: { eq: labelName } }
+    })
+
+    if (existingLabels.nodes && existingLabels.nodes.length > 0) {
+      return existingLabels.nodes[0].id
+    }
+
+    // Create new label if it doesn't exist
+    const newLabel = await linearClient.createIssueLabel({
+      name: labelName,
+      color: '#FF6B6B', // Red color for agent labels
+      description: `Temporary label indicating this issue is being processed by ${agentId}`
+    })
+
+    return newLabel.issueLabel.id
+  } catch (error) {
+    log('❌', `Error finding or creating label ${labelName}: ${error.message}`, 'red')
+    return null
+  }
+}
+
+/**
+ * Get all label IDs for an issue, including the new ones to add.
+ *
+ * @param {Object} issue - The issue object.
+ * @param {Array<string>} additionalLabelIds - Additional label IDs to add.
+ * @returns {Promise<Array<string>>} Array of all label IDs.
+ */
+async function getLabelIds (issue, additionalLabelIds = []) {
+  try {
+    const labels = await issue.labels()
+    const existingLabelIds = labels && labels.nodes ? labels.nodes.map(label => label.id) : []
+
+    return [...existingLabelIds, ...additionalLabelIds]
+  } catch (error) {
+    log('⚠️', `Error getting label IDs for issue ${issue.identifier}: ${error.message}`, 'yellow')
+    return additionalLabelIds
+  }
+}
+
 module.exports = {
   pollLinear,
   checkIssueStatus,
   getIssueShortName,
-  updateIssueToInProgress
+  updateIssueToInProgress,
+  lockIssue,
+  unlockIssue,
+  agentId
 }
