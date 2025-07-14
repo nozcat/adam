@@ -77,6 +77,41 @@ function printIssues (issues) {
 }
 
 /**
+ * Check if there's work to do for an issue before locking it.
+ *
+ * @param {Object} issue - The issue to check.
+ * @returns {Promise<boolean>} True if there's work to do, false otherwise.
+ */
+async function hasWorkToDo (issue) {
+  // Check if the PR already exists
+  const existingPR = await findExistingPR(issue, issue.repository)
+  if (existingPR) {
+    // Check if this is a merged PR
+    if (existingPR.merged) {
+      log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
+      return false
+    }
+
+    // Check for unresponded comments
+    const comments = await getPRComments(existingPR.number, issue.repository)
+    if (comments) {
+      const conversationThreads = filterRelevantComments(comments)
+      if (conversationThreads.length > 0) {
+        log('💬', `Found ${conversationThreads.length} unresponded comment(s) for issue ${issue.identifier}`, 'blue')
+        return true
+      }
+    }
+
+    log('ℹ️', `No unresponded comments found for issue ${issue.identifier}`, 'yellow')
+    return false
+  }
+
+  // No existing PR means there's work to do (create initial implementation)
+  log('✨', `No PR exists for issue ${issue.identifier} - work needed`, 'blue')
+  return true
+}
+
+/**
  * Process an issue.
  *
  * @param {Object} issue - The issue to process.
@@ -91,8 +126,16 @@ async function processIssue (issue) {
     return false
   }
 
-  // Try to lock the issue before processing
-  log('🔒', `Attempting to lock issue ${issue.identifier}...`, 'blue')
+  // Check if there's work to do before attempting to lock
+  log('🔍', `Checking if there's work to do for issue ${issue.identifier}...`, 'blue')
+  const workExists = await hasWorkToDo(issue)
+  if (!workExists) {
+    log('⏭️', `No work to do for issue ${issue.identifier}, skipping lock`, 'yellow')
+    return false
+  }
+
+  // Try to lock the issue only after determining there's work to do
+  log('🔒', `Work detected - attempting to lock issue ${issue.identifier}...`, 'blue')
   const lockSuccess = await lockIssue(issue)
   if (!lockSuccess) {
     log('⚠️', `Failed to lock issue ${issue.identifier}, skipping (likely race condition)`, 'yellow')
@@ -114,12 +157,12 @@ async function processIssue (issue) {
       return false
     }
 
-    // Check if the PR already exists.
+    // Check if the PR already exists (we know there's work from hasWorkToDo check)
     const existingPR = await findExistingPR(issue, issue.repository)
     if (existingPR) {
-      // Check if this is a merged PR (race condition detected)
+      // Double-check if this is a merged PR (race condition during lock acquisition)
       if (existingPR.merged) {
-        log('🛑', `Skipping issue ${issue.identifier} - PR was already merged`, 'yellow')
+        log('🛑', `Skipping issue ${issue.identifier} - PR was merged during lock acquisition`, 'yellow')
         return false
       }
       const foundWork = await processExistingPR(existingPR, issue)
