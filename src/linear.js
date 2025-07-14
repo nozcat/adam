@@ -142,23 +142,35 @@ async function getAssignedIssues () {
  */
 async function getRepositoryFromIssue (issue) {
   try {
-    // Get labels from the issue
-    const labels = await issue.labels()
-    if (!labels || !labels.nodes) {
-      log('⚠️', `No labels found on issue ${issue.identifier}`, 'yellow')
-      return null
-    }
-
-    // Look for a label matching the pattern repo:<owner>/<name>
-    for (const label of labels.nodes) {
-      const repository = extractRepositoryFromLabel(label.name)
-      if (repository) {
-        log('✅', `Found repository ${repository.owner}/${repository.name} from label on issue ${issue.identifier}`, 'green')
-        return repository
+    // First, check labels on the issue itself
+    const issueLabels = await issue.labels()
+    if (issueLabels && issueLabels.nodes) {
+      // Look for a label matching the pattern repo:<owner>/<name>
+      for (const label of issueLabels.nodes) {
+        const repository = extractRepositoryFromLabel(label.name)
+        if (repository) {
+          log('✅', `Found repository ${repository.owner}/${repository.name} from label on issue ${issue.identifier}`, 'green')
+          return repository
+        }
       }
     }
 
-    log('⚠️', `No repository label found on issue ${issue.identifier}`, 'yellow')
+    // If no repository label found on issue, check the project labels
+    const project = await issue.project
+    if (project) {
+      const projectLabels = await project.labels()
+      if (projectLabels && projectLabels.nodes) {
+        for (const label of projectLabels.nodes) {
+          const repository = extractRepositoryFromLabel(label.name)
+          if (repository) {
+            log('✅', `Found repository ${repository.owner}/${repository.name} from label on project for issue ${issue.identifier}`, 'green')
+            return repository
+          }
+        }
+      }
+    }
+
+    log('⚠️', `No repository label found on issue ${issue.identifier} or its project`, 'yellow')
     return null
   } catch (error) {
     log('⚠️', `Error getting repository from issue ${issue.identifier}: ${error.message}`, 'yellow')
