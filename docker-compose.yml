@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     environment:
       # Override with environment variables if needed
+      - MODE=${MODE:-adam}
       - LINEAR_API_KEY=${LINEAR_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - GITHUB_USERNAME=${GITHUB_USERNAME}
