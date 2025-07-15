@@ -2,31 +2,25 @@ require('dotenv').config()
 
 const { log, getEnvVar } = require('./util')
 
-let apiServerUrl = null
-
 /**
  * Get the API server URL, either from environment variable or by starting a local server
  * @returns {Promise<string>} The API server URL
  */
 async function getApiServerUrl () {
-  if (apiServerUrl) {
-    return apiServerUrl
-  }
-
   const apiServerEnv = getEnvVar('API_SERVER')
 
   if (apiServerEnv) {
     // Use external API server
-    apiServerUrl = apiServerEnv.startsWith('http') ? apiServerEnv : `http://${apiServerEnv}`
+    const apiServerUrl = apiServerEnv.startsWith('http') ? apiServerEnv : `http://${apiServerEnv}`
     log('🔗', `Using external API server: ${apiServerUrl}`, 'blue')
+    return apiServerUrl
   } else {
     // Use local API server (should be started separately)
     const port = parseInt(getEnvVar('API_PORT')) || 8880
-    apiServerUrl = `http://localhost:${port}`
+    const apiServerUrl = `http://localhost:${port}`
     log('🔗', `Using local API server: ${apiServerUrl}`, 'blue')
+    return apiServerUrl
   }
-
-  return apiServerUrl
 }
 
 /**
