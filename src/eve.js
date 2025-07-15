@@ -11,7 +11,7 @@ const { startApiServerIfNecessary } = require('./api')
 async function runEve () {
   log('🌙', 'Starting Eve - AI agent mode', 'green')
 
-  // Start API server if necessary (based on API_MODE environment variable)
+  // Start API server if necessary (based on API_SERVER environment variable)
   await startApiServerIfNecessary()
 
   // Initialize API server connection

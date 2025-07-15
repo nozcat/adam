@@ -33,14 +33,14 @@ async function startApiServer () {
 }
 
 /**
- * Start the API server if API_MODE is set to 'enabled'
+ * Start the API server if API_SERVER is not set (null/empty)
  * @returns {Promise<http.Server|null>} The HTTP server instance if started, null otherwise
  */
 async function startApiServerIfNecessary () {
-  const apiMode = getEnvVar('API_MODE') || 'disabled'
+  const apiServer = getEnvVar('API_SERVER')
 
-  if (apiMode === 'enabled') {
-    log('🔧', 'API_MODE is enabled, starting API server...', 'blue')
+  if (!apiServer) {
+    log('🔧', 'API_SERVER not set, starting local API server...', 'blue')
     try {
       const server = await startApiServer()
       return server
@@ -49,7 +49,7 @@ async function startApiServerIfNecessary () {
       throw error
     }
   } else {
-    log('🔧', 'API_MODE is disabled, skipping API server startup', 'yellow')
+    log('🔧', `API_SERVER is set to ${apiServer}, skipping local API server startup`, 'yellow')
     return null
   }
 }

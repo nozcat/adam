@@ -14,7 +14,7 @@ async function runAdam () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
   log('🤖', `Agent ID: ${agentId}`, 'blue')
 
-  // Start API server if necessary (based on API_MODE environment variable)
+  // Start API server if necessary (based on API_SERVER environment variable)
   await startApiServerIfNecessary()
 
   // Initialize API server connection

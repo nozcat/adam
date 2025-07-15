@@ -77,7 +77,6 @@ MODE=api npm run start
    REPOS=                 # Comma-separated list of allowed repositories (e.g., owner/repo1,owner/repo2)
    API_SERVER=            # External API server URL (e.g., localhost:8880). If not set, agents start their own API server
    API_PORT=8880          # Port for the local API server (defaults to 8880)
-   API_MODE=disabled      # Enable API server in Adam/Eve modes ('enabled' or 'disabled', defaults to 'disabled')
    ```
 
 3. **Start an agent**
