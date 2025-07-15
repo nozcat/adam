@@ -38,7 +38,7 @@ async function getApiServerUrl () {
  * @param {object} options - Request options
  * @returns {Promise<object>} The response data
  */
-async function apiRequest (path, options = {}) {
+async function request (path, options = {}) {
   const url = await getApiServerUrl()
   const fullUrl = `${url}${path}`
 
@@ -65,5 +65,5 @@ async function apiRequest (path, options = {}) {
 
 module.exports = {
   getApiServerUrl,
-  apiRequest
+  request
 }
