@@ -1,7 +1,7 @@
 services:
   api-server:
     build: .
-    container_name: adam-api-server
+    container_name: api-server
     restart: unless-stopped
     environment:
       - MODE=api

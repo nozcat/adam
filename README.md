@@ -151,7 +151,7 @@ The easiest way to run Adam with Docker is using Docker Compose. By default, it 
    docker-compose up -d
    ```
    This will start:
-   - 1 API server (adam-api-server) that provides centralized API management
+   - 1 API server (api-server) that provides centralized API management
    - 4 Adam agents (adam1, adam2, adam3, adam4) running continuously
    - 1 Eve agent (eve) which exits immediately (still under development)
    
