@@ -1,7 +1,6 @@
 require('dotenv').config()
 
 const { log, getEnvVar } = require('./util')
-const { startApiServer } = require('./api')
 
 let apiServerUrl = null
 
@@ -21,12 +20,10 @@ async function getApiServerUrl () {
     apiServerUrl = apiServerEnv.startsWith('http') ? apiServerEnv : `http://${apiServerEnv}`
     log('🔗', `Using external API server: ${apiServerUrl}`, 'blue')
   } else {
-    // Start local API server
+    // Use local API server (should be started separately)
     const port = parseInt(getEnvVar('API_PORT')) || 8880
     apiServerUrl = `http://localhost:${port}`
-
-    log('🚀', 'Starting local API server...', 'yellow')
-    await startApiServer()
+    log('🔗', `Using local API server: ${apiServerUrl}`, 'blue')
   }
 
   return apiServerUrl

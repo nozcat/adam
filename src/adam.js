@@ -5,6 +5,7 @@ const { log, getRepoPath, getEnvVar } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary, cloneReposFromEnv, isRepoAllowed } = require('./github')
 const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress, lockIssue, unlockIssue, agentId } = require('./linear')
 const { getApiServerUrl } = require('./apiClient')
+const { startApiServerIfNecessary } = require('./api')
 
 /**
  * Main entry point for Adam mode.
@@ -12,6 +13,9 @@ const { getApiServerUrl } = require('./apiClient')
 async function runAdam () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
   log('🤖', `Agent ID: ${agentId}`, 'blue')
+
+  // Start API server if necessary (based on API_MODE environment variable)
+  await startApiServerIfNecessary()
 
   // Initialize API server connection
   await getApiServerUrl()
