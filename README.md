@@ -123,7 +123,7 @@ For multi-agent deployments or when you want centralized API management:
    API_SERVER=localhost:8880  # or any host:port where your API server is running
    ```
 
-The API server provides a health check endpoint and will be extended with additional functionality in future releases.
+The API server will be extended with additional functionality in future releases.
 
 ## Docker Setup
 
