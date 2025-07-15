@@ -1,4 +1,19 @@
 services:
+  api-server:
+    build: .
+    container_name: adam-api-server
+    restart: unless-stopped
+    environment:
+      - MODE=api
+      - LINEAR_API_KEY=${LINEAR_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - API_PORT=8880
+      - DEBUG=${DEBUG:-false}
+    ports:
+      - "8880:8880"
+    networks:
+      - adam-network
+
   adam1:
     build: .
     container_name: adam1-agent
@@ -15,6 +30,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
       - REPOS=${REPOS}
+      - API_SERVER=api-server:8880
     volumes:
       # Mount a volume for persistent git repositories
       - adam1_repos:/app/repos
@@ -22,6 +38,8 @@ services:
     tty: true
     networks:
       - adam-network
+    depends_on:
+      - api-server
 
   adam2:
     build: .
@@ -39,6 +57,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
       - REPOS=${REPOS}
+      - API_SERVER=api-server:8880
     volumes:
       # Mount a volume for persistent git repositories
       - adam2_repos:/app/repos
@@ -46,6 +65,8 @@ services:
     tty: true
     networks:
       - adam-network
+    depends_on:
+      - api-server
 
   adam3:
     build: .
@@ -63,6 +84,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
       - REPOS=${REPOS}
+      - API_SERVER=api-server:8880
     volumes:
       # Mount a volume for persistent git repositories
       - adam3_repos:/app/repos
@@ -70,6 +92,8 @@ services:
     tty: true
     networks:
       - adam-network
+    depends_on:
+      - api-server
 
   adam4:
     build: .
@@ -87,6 +111,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
       - REPOS=${REPOS}
+      - API_SERVER=api-server:8880
     volumes:
       # Mount a volume for persistent git repositories
       - adam4_repos:/app/repos
@@ -94,6 +119,8 @@ services:
     tty: true
     networks:
       - adam-network
+    depends_on:
+      - api-server
 
   eve:
     build: .
@@ -111,6 +138,7 @@ services:
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - REPOS_DIR=${REPOS_DIR:-./repos}
       - REPOS=${REPOS}
+      - API_SERVER=api-server:8880
     volumes:
       # Mount a volume for persistent git repositories
       - eve_repos:/app/repos
@@ -118,6 +146,8 @@ services:
     tty: true
     networks:
       - adam-network
+    depends_on:
+      - api-server
 
 volumes:
   adam1_repos:
