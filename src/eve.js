@@ -2,12 +2,16 @@ require('dotenv').config()
 
 const { log } = require('./util')
 const { cloneReposFromEnv } = require('./github')
+const { startApiServerIfNecessary } = require('./api')
 
 /**
  * Main entry point for Eve agent.
  */
 async function runEve () {
   log('🌙', 'Starting Eve - AI agent mode', 'green')
+
+  // Start API server if necessary (based on API_SERVER environment variable)
+  await startApiServerIfNecessary()
 
   // Clone repositories specified in REPOS environment variable
   await cloneReposFromEnv()

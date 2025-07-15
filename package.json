@@ -7,13 +7,15 @@
     "lint": "npx standard --fix",
     "start": "node ./src/index.js",
     "adam": "MODE=adam node ./src/index.js",
-    "eve": "MODE=eve node ./src/index.js"
+    "eve": "MODE=eve node ./src/index.js",
+    "api": "MODE=api node ./src/index.js"
   },
   "dependencies": {
     "@linear/sdk": "^46.0.0",
     "@octokit/rest": "^22.0.0",
     "chalk": "^4.1.2",
     "dotenv": "^17.0.1",
+    "express": "^4.21.0",
     "marked": "^11.0.1",
     "marked-terminal": "^7.3.0",
     "node-cron": "^4.2.0",

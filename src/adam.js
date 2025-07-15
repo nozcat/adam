@@ -4,6 +4,7 @@ const { callClaude, checkClaudePermissions } = require('./claude')
 const { log, getRepoPath, getEnvVar } = require('./util')
 const { ensureRepositoryExists, checkoutBranch, createPR, findExistingPR, updateExistingPR, getPRComments, postPRComment, postReviewCommentReply, addCommentReaction, pushBranchAndMergeIfNecessary, cloneReposFromEnv, isRepoAllowed } = require('./github')
 const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, formatConversationThread, updateIssueToInProgress, lockIssue, unlockIssue, agentId } = require('./linear')
+const { startApiServerIfNecessary } = require('./api')
 
 /**
  * Main entry point for Adam mode.
@@ -11,6 +12,9 @@ const { pollLinear, checkIssueStatus, getIssueShortName, getIssueComments, forma
 async function runAdam () {
   log('🚀', 'Starting Adam - Linear to GitHub automation agent', 'green')
   log('🤖', `Agent ID: ${agentId}`, 'blue')
+
+  // Start API server if necessary (based on API_SERVER environment variable)
+  await startApiServerIfNecessary()
 
   // Clone repositories specified in REPOS environment variable
   await cloneReposFromEnv()
