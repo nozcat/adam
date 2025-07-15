@@ -2,7 +2,6 @@ require('dotenv').config()
 
 const { log } = require('./util')
 const { cloneReposFromEnv } = require('./github')
-const { getApiServerUrl } = require('./apiClient')
 const { startApiServerIfNecessary } = require('./api')
 
 /**
@@ -13,9 +12,6 @@ async function runEve () {
 
   // Start API server if necessary (based on API_SERVER environment variable)
   await startApiServerIfNecessary()
-
-  // Initialize API server connection
-  await getApiServerUrl()
 
   // Clone repositories specified in REPOS environment variable
   await cloneReposFromEnv()
