@@ -19,10 +19,6 @@ async function startApiServer () {
     res.json({ status: 'ok', message: 'API server is running' })
   })
 
-  app.get('/health', (req, res) => {
-    res.json({ status: 'healthy' })
-  })
-
   return new Promise((resolve, reject) => {
     const server = app.listen(port, () => {
       log('🌐', `API server started on port ${port}`, 'green')
